@@ -61,9 +61,9 @@ class PRV_Gateway_Client {
 	 * @throws \RuntimeException On permanent HTTP failure or parse error.
 	 */
 	public function post_to_gateway( string $provider_slug, array $body, string $api_key, string $endpoint = '/chat/completions' ): array {
-		$base_url  = \$this->build_base_url( \$provider_slug );
-		$url       = \$base_url . \$endpoint;
-		$base_host = (string) wp_parse_url( \$base_url, PHP_URL_HOST );
+		$base_url  = $this->build_base_url( $provider_slug );
+		$url       = $base_url . $endpoint;
+		$base_host = (string) wp_parse_url( $base_url, PHP_URL_HOST );
 
 		$headers = array(
 			'Authorization' => 'Bearer ' . $api_key,

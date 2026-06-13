@@ -190,7 +190,7 @@ class PRV_Admin_Page {
 			return;
 		}
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash
-		$probed  = isset( $_GET['prv_probed'] ) ? absint( wp_unslash( $_GET['prv_probed'] ) ) : 0;
+		$probed  = isset( $_GET['prv_probed'] ) ? absint( wp_unslash( $_GET['prv_probed'] ) ) : 0; // phpcs:ignore Generic.Formatting.MultipleStatementAlignment.NotSameWarning
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash
 		$skipped = isset( $_GET['prv_skipped'] ) ? absint( wp_unslash( $_GET['prv_skipped'] ) ) : 0;
 
