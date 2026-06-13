@@ -1,6 +1,6 @@
 {
 	"name": "peptiderepo/pr-vision",
-	"description": "AI-visibility (GEO) monitoring dashboard for peptiderepo.com — weekly LLM probes, cost ledger, trendline admin panel.",
+	"description": "AI-visibility (GEO) monitoring dashboard for peptiderepo.com \u2014 weekly LLM probes, cost ledger, trendline admin panel.",
 	"type": "wordpress-plugin",
 	"license": "GPL-2.0-or-later",
 	"require": {
@@ -18,7 +18,7 @@
 		}
 	},
 	"scripts": {
-		"lint": "phpcs",
+		"lint": "phpcs -n",
 		"lint:fix": "phpcbf"
 	}
 }
