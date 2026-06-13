@@ -26,7 +26,7 @@ $domains = $detector->parse_domains( [
 
 pgm_assert( in_array( 'peptiderepo.com', $domains, true ), 'parse_domains: peptiderepo.com extracted from URL' );
 pgm_assert( in_array( 'examine.com', $domains, true ), 'parse_domains: www. stripped from examine.com' );
-pgm_assert( in_array( 'ncbi.nlm.nih.gov', $domains, true ), 'parse_domains: subdomain-only domain extracted' );
+pgm_assert( in_array( 'pubmed.ncbi.nlm.nih.gov', $domains, true ), 'parse_domains: full subdomain preserved when not www.' );
 pgm_assert_equals( 3, count( $domains ), 'parse_domains: exactly 3 unique domains' );
 
 // ── Test: parse object-style citations (Perplexity format) ───────────────
