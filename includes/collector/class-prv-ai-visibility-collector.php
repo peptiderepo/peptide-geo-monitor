@@ -1,10 +1,16 @@
 <?php
+/**
+ * AI-visibility data collector for the PR Vision dashboard.
+ *
+ * @package PrVision
+ */
+
 declare(strict_types=1);
 
 /**
- * AI-visibility data collector — v1 implementation of PGM_Data_Collector.
+ * AI-visibility data collector — v1 implementation of PRV_Data_Collector.
  *
- * Reads the pgm_ai_visibility table and returns structured data for:
+ * Reads the prv_ai_visibility table and returns structured data for:
  * - Trendline: per-run visibility score (% cited, position-weighted).
  * - Standings: per-peptide latest cited status, our position, competing domains.
  * - Run metadata: last run time, MTD cost vs cap.
@@ -14,27 +20,31 @@ declare(strict_types=1);
  *   position_bonus = Σ (1 / our_position) for cited probes / total_probes
  *   visibility_score = round((base_score + position_bonus) / 2, 4)
  *
- * Who triggers: PGM_Admin_Page calls the registered collector via the registry.
- * Dependencies: $wpdb, PGM_Table_Manager, PGM_Cost_Ledger, PGM_Config.
+ * Who triggers: PRV_Admin_Page calls the registered collector via the registry.
+ * Dependencies: $wpdb, PRV_Table_Manager, PRV_Cost_Ledger, PRV_Config.
  *
- * @see interface-pgm-data-collector.php  — Interface this implements.
- * @see class-pgm-ai-visibility-panel.php — Renders the data returned here.
+ * @see interface-prv-data-collector.php  — Interface this implements.
+ * @see class-prv-ai-visibility-panel.php — Renders the data returned here.
  * @see CONTEXT.md                        — Score formula + glossary.
  * @see ARCHITECTURE.md                   — §Storage, §Score.
- * @package PeptideGeoMonitor
+ * @package PrVision
  */
-class PGM_Ai_Visibility_Collector implements PGM_Data_Collector {
+class PRV_Ai_Visibility_Collector implements PRV_Data_Collector {
 
 	/**
-	 * @var PGM_Cost_Ledger
+	 * Budget ledger for MTD cost lookup.
+	 *
+	 * @var PRV_Cost_Ledger
 	 */
-	private PGM_Cost_Ledger $ledger;
+	private PRV_Cost_Ledger $ledger;
 
 	/**
-	 * @param PGM_Cost_Ledger|null $ledger Injected for testing.
+	 * Constructor.
+	 *
+	 * @param PRV_Cost_Ledger|null $ledger Injected for testing.
 	 */
-	public function __construct( ?PGM_Cost_Ledger $ledger = null ) {
-		$this->ledger = $ledger ?? new PGM_Cost_Ledger();
+	public function __construct( ?PRV_Cost_Ledger $ledger = null ) {
+		$this->ledger = $ledger ?? new PRV_Cost_Ledger();
 	}
 
 	/**
@@ -51,12 +61,11 @@ class PGM_Ai_Visibility_Collector implements PGM_Data_Collector {
 	public function collect(): array {
 		global $wpdb;
 
-		$table = PGM_Table_Manager::get_table_name();
+		$table = PRV_Table_Manager::get_table_name();
 
 		// ── Trendline: one score per run_id ────────────────────────────
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$run_rows = $wpdb->get_results(
-			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			"SELECT run_id, MIN(captured_at) AS captured_at,
 			        SUM(cited) AS cited_count,
 			        COUNT(*) AS total_count,
@@ -67,6 +76,7 @@ class PGM_Ai_Visibility_Collector implements PGM_Data_Collector {
 			 LIMIT 52",
 			ARRAY_A
 		);
+		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
 		$trendline = array();
 		foreach ( (array) $run_rows as $row ) {
@@ -82,9 +92,8 @@ class PGM_Ai_Visibility_Collector implements PGM_Data_Collector {
 		}
 
 		// ── Standings: latest result per peptide ────────────────────────
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$standing_rows = $wpdb->get_results(
-			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			"SELECT peptide_slug, peptide_label,
 			        MAX(cited) AS cited,
 			        MIN(CASE WHEN cited=1 THEN our_position ELSE NULL END) AS our_position,
@@ -95,10 +104,11 @@ class PGM_Ai_Visibility_Collector implements PGM_Data_Collector {
 			 GROUP BY peptide_slug, peptide_label",
 			ARRAY_A
 		);
+		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
 		$standings = array();
 		foreach ( (array) $standing_rows as $row ) {
-			$top_domains = $this->extract_top_domains( (string) ( $row['domains_json_list'] ?? '' ) );
+			$top_domains = $this->extract_top_domains( (string) ( $row['domains_json_list'] ?? '' ) ); // phpcs:ignore Generic.Formatting.MultipleStatementAlignment.NotSameWarning
 			$standings[ (string) $row['peptide_slug'] ] = array(
 				'label'        => (string) $row['peptide_label'],
 				'cited'        => (bool) (int) $row['cited'],
@@ -109,18 +119,16 @@ class PGM_Ai_Visibility_Collector implements PGM_Data_Collector {
 		}
 
 		// ── Run metadata ────────────────────────────────────────────────
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$last_run = $wpdb->get_var(
-			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			"SELECT MAX(captured_at) FROM {$table}"
-		);
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$last_run = $wpdb->get_var( "SELECT MAX(captured_at) FROM {$table}" );
+		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
 		return array(
 			'trendline'       => $trendline,
 			'standings'       => $standings,
 			'last_run_at'     => $last_run ? (string) $last_run : null,
 			'mtd_cost_usd'    => $this->ledger->get_month_to_date_usd(),
-			'monthly_cap_usd' => PGM_Config::get_monthly_budget_usd(),
+			'monthly_cap_usd' => PRV_Config::get_monthly_budget_usd(),
 		);
 	}
 
@@ -146,8 +154,8 @@ class PGM_Ai_Visibility_Collector implements PGM_Data_Collector {
 		if ( 0 === $total_count ) {
 			return 0.0;
 		}
-		$base_score      = $cited_count / $total_count;
-		$position_bonus  = $position_sum / $total_count;
+		$base_score     = $cited_count / $total_count;
+		$position_bonus = $position_sum / $total_count;
 		return round( ( $base_score + $position_bonus ) / 2.0, 4 );
 	}
 
@@ -163,7 +171,7 @@ class PGM_Ai_Visibility_Collector implements PGM_Data_Collector {
 			return array();
 		}
 
-		$all = array();
+		$all    = array();
 		$chunks = explode( '|||', $domains_json_list );
 		foreach ( $chunks as $chunk ) {
 			$decoded = json_decode( $chunk, true );
@@ -175,6 +183,6 @@ class PGM_Ai_Visibility_Collector implements PGM_Data_Collector {
 		$counts = array_count_values( $all );
 		arsort( $counts );
 		$top = array_slice( array_keys( $counts ), 0, 5 );
-		return array_values( array_filter( $top, fn( $d ) => PGM_TARGET_DOMAIN !== $d ) );
+		return array_values( array_filter( $top, fn( $d ) => PRV_TARGET_DOMAIN !== $d ) );
 	}
 }

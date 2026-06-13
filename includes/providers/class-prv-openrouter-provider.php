@@ -1,4 +1,10 @@
 <?php
+/**
+ * Generic OpenRouter provider for GPT-search and Gemini-search models.
+ *
+ * @package PrVision
+ */
+
 declare(strict_types=1);
 
 /**
@@ -6,7 +12,7 @@ declare(strict_types=1);
  *
  * One class handles any OpenRouter-routed model. The model identifier is set
  * at construction time; the runner instantiates one provider per model from
- * PGM_Config::get_models().
+ * PRV_Config::get_models().
  *
  * GPT-search (openai/gpt-4o-search-preview) and Gemini-search
  * (google/gemini-2.0-flash-001) do not return a structured citations array
@@ -14,18 +20,18 @@ declare(strict_types=1);
  * text or from any 'annotations' key the model may include.
  *
  * Required WP-config constant:
- *   PGM_OPENROUTER_API_KEY — OpenRouter key (sk-or-…)
+ *   PRV_OPENROUTER_API_KEY — OpenRouter key (sk-or-…)
  *
- * Who triggers: PGM_Probe_Runner via PGM_Probe_Provider interface.
- * Dependencies: PGM_Gateway_Client, PGM_Citation_Detector, PGM_Probe_Result.
+ * Who triggers: PRV_Probe_Runner via PRV_Probe_Provider interface.
+ * Dependencies: PRV_Gateway_Client, PRV_Citation_Detector, PRV_Probe_Result.
  *
- * @see interface-pgm-probe-provider.php  — Interface this implements.
- * @see class-pgm-gateway-client.php      — Shared HTTP + retry logic.
- * @see class-pgm-citation-detector.php   — Domain extraction + detection.
+ * @see interface-prv-probe-provider.php  — Interface this implements.
+ * @see class-prv-gateway-client.php      — Shared HTTP + retry logic.
+ * @see class-prv-citation-detector.php   — Domain extraction + detection.
  * @see ARCHITECTURE.md                   — §Provider implementations.
- * @package PeptideGeoMonitor
+ * @package PrVision
  */
-class PGM_OpenRouter_Provider implements PGM_Probe_Provider {
+class PRV_OpenRouter_Provider implements PRV_Probe_Provider {
 
 	/**
 	 * Estimated cost per probe call in USD (conservative cross-model default).
@@ -33,45 +39,57 @@ class PGM_OpenRouter_Provider implements PGM_Probe_Provider {
 	const ESTIMATED_COST_PER_PROBE = 0.003;
 
 	/**
-	 * @var string OpenRouter model identifier (e.g. "openai/gpt-4o-search-preview").
+	 * OpenRouter model identifier (e.g. "openai/gpt-4o-search-preview").
+	 *
+	 * @var string
 	 */
 	private string $model;
 
 	/**
-	 * @var PGM_Gateway_Client
+	 * HTTP gateway client.
+	 *
+	 * @var PRV_Gateway_Client
 	 */
-	private PGM_Gateway_Client $gateway;
+	private PRV_Gateway_Client $gateway;
 
 	/**
-	 * @var PGM_Citation_Detector
+	 * Citation domain detector.
+	 *
+	 * @var PRV_Citation_Detector
 	 */
-	private PGM_Citation_Detector $detector;
+	private PRV_Citation_Detector $detector;
 
 	/**
-	 * @param string                 $model    OpenRouter model identifier.
-	 * @param PGM_Gateway_Client|null    $gateway  Injected for testing.
-	 * @param PGM_Citation_Detector|null $detector Injected for testing.
+	 * Constructor.
+	 *
+	 * @param string                     $model    OpenRouter model identifier.
+	 * @param PRV_Gateway_Client|null    $gateway  Injected for testing.
+	 * @param PRV_Citation_Detector|null $detector Injected for testing.
 	 */
-	public function __construct( string $model, ?PGM_Gateway_Client $gateway = null, ?PGM_Citation_Detector $detector = null ) {
+	public function __construct( string $model, ?PRV_Gateway_Client $gateway = null, ?PRV_Citation_Detector $detector = null ) {
 		$this->model    = $model;
-		$this->gateway  = $gateway  ?? new PGM_Gateway_Client();
-		$this->detector = $detector ?? new PGM_Citation_Detector();
+		$this->gateway  = $gateway ?? new PRV_Gateway_Client();
+		$this->detector = $detector ?? new PRV_Citation_Detector();
 	}
 
 	/**
 	 * {@inheritDoc}
 	 *
-	 * @param string $query
-	 * @return PGM_Probe_Result
+	 * @param string $query The search query to probe.
+	 *
+	 * @return PRV_Probe_Result
 	 * @throws \RuntimeException On permanent API failure.
 	 */
-	public function probe( string $query ): PGM_Probe_Result {
+	public function probe( string $query ): PRV_Probe_Result {
 		$api_key = $this->resolve_api_key();
 
 		$body = array(
 			'model'      => $this->model,
 			'messages'   => array(
-				array( 'role' => 'user', 'content' => $query ),
+				array(
+					'role'    => 'user',
+					'content' => $query,
+				),
 			),
 			'max_tokens' => 512,
 		);
@@ -82,7 +100,7 @@ class PGM_OpenRouter_Provider implements PGM_Probe_Provider {
 	}
 
 	/**
-	 * Parse the OpenRouter response into a PGM_Probe_Result.
+	 * Parse the OpenRouter response into a PRV_Probe_Result.
 	 *
 	 * Attempts to extract citations from:
 	 * 1. `annotations` array (some models include structured source references).
@@ -90,9 +108,9 @@ class PGM_OpenRouter_Provider implements PGM_Probe_Provider {
 	 *
 	 * @param array<string, mixed> $data Decoded API response.
 	 *
-	 * @return PGM_Probe_Result
+	 * @return PRV_Probe_Result
 	 */
-	public function parse_response( array $data ): PGM_Probe_Result {
+	public function parse_response( array $data ): PRV_Probe_Result {
 		$content = '';
 		if ( isset( $data['choices'][0]['message']['content'] ) ) {
 			$content = (string) $data['choices'][0]['message']['content'];
@@ -126,7 +144,7 @@ class PGM_OpenRouter_Provider implements PGM_Probe_Provider {
 			$cost_usd = (float) $data['usage']['total_tokens'] * 0.000002;
 		}
 
-		return new PGM_Probe_Result( $raw_excerpt, $domains, $cited, $our_position, $cost_usd );
+		return new PRV_Probe_Result( $raw_excerpt, $domains, $cited, $our_position, $cost_usd );
 	}
 
 	/**
@@ -140,7 +158,7 @@ class PGM_OpenRouter_Provider implements PGM_Probe_Provider {
 	 * {@inheritDoc}
 	 */
 	public function is_configured(): bool {
-		return defined( 'PGM_OPENROUTER_API_KEY' ) && '' !== PGM_OPENROUTER_API_KEY;
+		return defined( 'PRV_OPENROUTER_API_KEY' ) && '' !== PRV_OPENROUTER_API_KEY;
 	}
 
 	/**
@@ -150,11 +168,10 @@ class PGM_OpenRouter_Provider implements PGM_Probe_Provider {
 	 * @throws \RuntimeException When the constant is not defined or empty.
 	 */
 	private function resolve_api_key(): string {
-		if ( ! defined( 'PGM_OPENROUTER_API_KEY' ) || '' === PGM_OPENROUTER_API_KEY ) {
-			throw new \RuntimeException(
-				__( 'PGM_OPENROUTER_API_KEY constant is not defined. Add it to wp-config.php.', 'peptide-geo-monitor' )
-			);
+		if ( ! defined( 'PRV_OPENROUTER_API_KEY' ) || '' === PRV_OPENROUTER_API_KEY ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, not HTML output
+			throw new \RuntimeException( __( 'PRV_OPENROUTER_API_KEY constant is not defined. Add it to wp-config.php.', 'pr-vision' ) );
 		}
-		return PGM_OPENROUTER_API_KEY;
+		return PRV_OPENROUTER_API_KEY;
 	}
 }
