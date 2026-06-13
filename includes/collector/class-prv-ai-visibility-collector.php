@@ -91,7 +91,7 @@ class PRV_Ai_Visibility_Collector implements PRV_Data_Collector {
 		}
 
 		// ── Standings: latest result per peptide ────────────────────────
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$standing_rows = $wpdb->get_results(
 			"SELECT peptide_slug, peptide_label,
 			        MAX(cited) AS cited,
@@ -102,7 +102,7 @@ class PRV_Ai_Visibility_Collector implements PRV_Data_Collector {
 			 WHERE run_id = (SELECT run_id FROM {$table} ORDER BY captured_at DESC LIMIT 1)
 			 GROUP BY peptide_slug, peptide_label",
 			ARRAY_A
-		);
+		); // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
 		$standings = array();
 		foreach ( (array) $standing_rows as $row ) {
@@ -117,10 +117,8 @@ class PRV_Ai_Visibility_Collector implements PRV_Data_Collector {
 		}
 
 		// ── Run metadata ────────────────────────────────────────────────
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$last_run = $wpdb->get_var(
-			"SELECT MAX(captured_at) FROM {$table}"
-		);
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$last_run = $wpdb->get_var( "SELECT MAX(captured_at) FROM {$table}" ); // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
 		return array(
 			'trendline'       => $trendline,
