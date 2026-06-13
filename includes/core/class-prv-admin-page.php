@@ -129,10 +129,10 @@ class PRV_Admin_Page {
 
 		$redirect = add_query_arg(
 			array(
-				'page'        => self::MENU_SLUG,
+				'page'         => self::MENU_SLUG,
 				'prv_run_done' => 1,
-				'prv_probed'  => (int) $counts['probed'],
-				'prv_skipped' => (int) ( $counts['skipped_budget'] + $counts['skipped_error'] ),
+				'prv_probed'   => (int) $counts['probed'],
+				'prv_skipped'  => (int) ( $counts['skipped_budget'] + $counts['skipped_error'] ),
 			),
 			admin_url( 'admin.php' )
 		);

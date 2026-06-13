@@ -64,7 +64,7 @@ class PRV_Ai_Visibility_Collector implements PRV_Data_Collector {
 		$table = PRV_Table_Manager::get_table_name();
 
 		// ── Trendline: one score per run_id ────────────────────────────
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$run_rows = $wpdb->get_results(
 			"SELECT run_id, MIN(captured_at) AS captured_at,
 			        SUM(cited) AS cited_count,
@@ -76,11 +76,12 @@ class PRV_Ai_Visibility_Collector implements PRV_Data_Collector {
 			 LIMIT 52",
 			ARRAY_A
 		);
+		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
 		$trendline = array();
 		foreach ( (array) $run_rows as $row ) {
 			$trendline[] = array(
-				'run_id'     => (string) $row['run_id'],
+				'run_id'      => (string) $row['run_id'],
 				'captured_at' => (string) $row['captured_at'],
 				'score'       => $this->compute_score(
 					(int) $row['cited_count'],
@@ -102,11 +103,12 @@ class PRV_Ai_Visibility_Collector implements PRV_Data_Collector {
 			 WHERE run_id = (SELECT run_id FROM {$table} ORDER BY captured_at DESC LIMIT 1)
 			 GROUP BY peptide_slug, peptide_label",
 			ARRAY_A
-		); // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		);
+		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
 		$standings = array();
 		foreach ( (array) $standing_rows as $row ) {
-			$top_domains = $this->extract_top_domains( (string) ( $row['domains_json_list'] ?? '' ) );
+			$top_domains = $this->extract_top_domains( (string) ( $row['domains_json_list'] ?? '' ) ); // phpcs:ignore Generic.Formatting.MultipleStatementAlignment.NotSameWarning
 			$standings[ (string) $row['peptide_slug'] ] = array(
 				'label'        => (string) $row['peptide_label'],
 				'cited'        => (bool) (int) $row['cited'],
@@ -118,7 +120,8 @@ class PRV_Ai_Visibility_Collector implements PRV_Data_Collector {
 
 		// ── Run metadata ────────────────────────────────────────────────
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$last_run = $wpdb->get_var( "SELECT MAX(captured_at) FROM {$table}" ); // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$last_run = $wpdb->get_var( "SELECT MAX(captured_at) FROM {$table}" );
+		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
 		return array(
 			'trendline'       => $trendline,
@@ -151,8 +154,8 @@ class PRV_Ai_Visibility_Collector implements PRV_Data_Collector {
 		if ( 0 === $total_count ) {
 			return 0.0;
 		}
-		$base_score      = $cited_count / $total_count;
-		$position_bonus  = $position_sum / $total_count;
+		$base_score     = $cited_count / $total_count;
+		$position_bonus = $position_sum / $total_count;
 		return round( ( $base_score + $position_bonus ) / 2.0, 4 );
 	}
 
@@ -168,7 +171,7 @@ class PRV_Ai_Visibility_Collector implements PRV_Data_Collector {
 			return array();
 		}
 
-		$all = array();
+		$all    = array();
 		$chunks = explode( '|||', $domains_json_list );
 		foreach ( $chunks as $chunk ) {
 			$decoded = json_decode( $chunk, true );

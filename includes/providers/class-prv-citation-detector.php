@@ -49,8 +49,8 @@ class PRV_Citation_Detector {
 
 			$host = (string) wp_parse_url( $url, PHP_URL_HOST );
 			if ( '' !== $host ) {
-				$bare            = str_starts_with( $host, 'www.' ) ? substr( $host, 4 ) : $host;
-				$domains[]       = strtolower( $bare );
+				$bare      = str_starts_with( $host, 'www.' ) ? substr( $host, 4 ) : $host;
+				$domains[] = strtolower( $bare );
 			}
 		}
 
