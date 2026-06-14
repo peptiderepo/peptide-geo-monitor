@@ -151,6 +151,7 @@ function __( string $text, string $domain = 'default' ): string { return $text; 
 function _n( string $single, string $plural, int $number, string $domain = 'default' ): string { return 1 === $number ? $single : $plural; }
 function esc_html( string $text ): string { return htmlspecialchars( $text, ENT_QUOTES ); }
 function esc_html__( string $text, string $domain = 'default' ): string { return esc_html( $text ); }
+function esc_attr__( string $text, string $domain = 'default' ): string { return esc_attr( $text ); }
 function esc_attr( string $text ): string { return htmlspecialchars( $text, ENT_QUOTES ); }
 function esc_textarea( string $text ): string { return htmlspecialchars( $text, ENT_QUOTES ); }
 function esc_js( string $text ): string { return addslashes( $text ); }
