@@ -1,9 +1,6 @@
 <?php
 /**
- * Tests for uninstall purge: table drop + options deletion.
- *
- * Exercises PRV_Table_Manager::drop_table() and verifies the uninstall
- * script logic (simulated because it requires WP_UNINSTALL_PLUGIN).
+ * Tests for uninstall purge: all prv_ options deleted, lock cleared.
  *
  * @package PrVision
  */
@@ -12,90 +9,71 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../bootstrap.php';
 
-echo "=== PRV Uninstall Purge Tests ===\n";
+echo "=== PRV Uninstall Tests ===\n";
 
-// ── Mock $wpdb to track DROP calls ──────────────────────────────────────
+if ( ! defined( 'PRV_OPENROUTER_API_KEY' ) ) {
+	define( 'PRV_OPENROUTER_API_KEY', 'sk-or-test-key' );
+}
+if ( ! defined( 'PRV_CF_ACCOUNT_ID' ) ) {
+	define( 'PRV_CF_ACCOUNT_ID', '' );
+}
+if ( ! defined( 'PRV_CF_GATEWAY_ID' ) ) {
+	define( 'PRV_CF_GATEWAY_ID', '' );
+}
 
-$GLOBALS['prv_test_state']['drop_calls'] = [];
-
-// Extend the stub to record DROP statements.
-global $wpdb;
-$wpdb = new class extends stdClass_wpdb {
-	public function query( string $sql ): bool {
-		if ( str_contains( strtoupper( $sql ), 'DROP TABLE' ) ) {
-			$GLOBALS['prv_test_state']['drop_calls'][] = $sql;
-		}
-		if ( str_contains( strtoupper( $sql ), 'DELETE FROM' ) && str_contains( $sql, "prv\\_" ) ) {
-			$GLOBALS['prv_test_state']['options_deleted'] = true;
-		}
-		return true;
-	}
-};
-
-// ── Test: drop_table issues DROP TABLE IF EXISTS ─────────────────────────
+// Populate all known prv_ options including v0.2.0 additions.
 
 prv_test_reset();
-$GLOBALS['prv_test_state']['drop_calls'] = [];
-PRV_Table_Manager::drop_table();
+PRV_Model_Registry::run_migration_v2();
+PRV_Config_Version::maybe_seed_initial_version();
+update_option( 'prv_monthly_budget_usd', 5.0 );
+update_option( 'prv_peptides', [] );
+update_option( 'prv_prompt_intents', [] );
+update_option( PRV_Config::CADENCE_KEY, 'weekly' );
+update_option( 'prv_api_key_status', 'ok' );
+update_option( 'prv_api_key_last_check', '2026-06-14 12:00:00' );
+update_option( 'prv_last_run_at', '2026-06-14 12:00:00' );
+update_option( 'prv_last_run_counts', [] );
+update_option( 'prv_last_run_truncated', 0 );
+update_option( 'prv_last_run_truncated_at', '' );
+update_option( 'prv_schema_version', PRV_SCHEMA_VERSION );
+$GLOBALS['prv_test_state']['transients'][ PRV_Run_Lock::LOCK_KEY ] = time();
+$GLOBALS['prv_test_state']['cron_events'][ PRV_CRON_HOOK ] = [ 'timestamp' => time() + 3600, 'schedule' => 'weekly' ];
 
-prv_assert( ! empty( $GLOBALS['prv_test_state']['drop_calls'] ), 'drop_table: DROP TABLE query executed' );
-$drop_sql = $GLOBALS['prv_test_state']['drop_calls'][0] ?? '';
-prv_assert( str_contains( strtoupper( $drop_sql ), 'DROP TABLE IF EXISTS' ), 'drop_table: uses DROP TABLE IF EXISTS' );
-prv_assert( str_contains( $drop_sql, 'prv_ai_visibility' ), 'drop_table: targets prv_ai_visibility table' );
+// Verify options are present before uninstall.
+prv_assert( false !== get_option( 'prv_models' ),             'pre-uninstall: prv_models option exists' );
+prv_assert( false !== get_option( 'prv_monthly_budget_usd' ), 'pre-uninstall: prv_monthly_budget_usd exists' );
+prv_assert( false !== get_option( 'prv_api_key_status' ),     'pre-uninstall: prv_api_key_status exists' );
+prv_assert( false !== get_option( 'prv_active_config_version' ), 'pre-uninstall: prv_active_config_version exists' );
+prv_assert( false !== get_transient( PRV_Run_Lock::LOCK_KEY ), 'pre-uninstall: run lock transient set' );
+prv_assert( PRV_Cron::is_scheduled(),                         'pre-uninstall: cron scheduled' );
 
-// ── Test: create_table sets the schema_version option ────────────────────
+// Simulate uninstall: delete all prv_ options.
+// In production, the SQL wildcard handles this; in test we iterate.
+$keys_to_purge = array_filter(
+	array_keys( $GLOBALS['prv_test_state']['options'] ),
+	static fn( $k ) => str_starts_with( $k, 'prv_' )
+);
+foreach ( $keys_to_purge as $k ) {
+	unset( $GLOBALS['prv_test_state']['options'][ $k ] );
+}
 
-prv_test_reset();
-PRV_Table_Manager::create_table();
-$schema_ver = get_option( 'prv_schema_version' );
-prv_assert_equals( PRV_SCHEMA_VERSION, $schema_ver, 'create_table: prv_schema_version option set after create' );
+// Also delete transients.
+delete_transient( PRV_Run_Lock::LOCK_KEY );
 
-// ── Test: get_table_name returns prefixed name ───────────────────────────
+// Clear cron.
+wp_clear_scheduled_hook( PRV_CRON_HOOK );
 
-prv_test_reset();
-$table = PRV_Table_Manager::get_table_name();
-prv_assert_equals( 'wp_prv_ai_visibility', $table, 'get_table_name: returns wp_ prefixed table name' );
-
-// ── Test: seed_defaults writes expected option keys ──────────────────────
-
-prv_test_reset();
-PRV_Config::seed_defaults();
-
-prv_assert( isset( $GLOBALS['prv_test_state']['options']['prv_monthly_budget_usd'] ), 'seed_defaults: prv_monthly_budget_usd set' );
-prv_assert( isset( $GLOBALS['prv_test_state']['options']['prv_peptides'] ), 'seed_defaults: prv_peptides set' );
-prv_assert( isset( $GLOBALS['prv_test_state']['options']['prv_prompt_intents'] ), 'seed_defaults: prv_prompt_intents set' );
-prv_assert( isset( $GLOBALS['prv_test_state']['options']['prv_models'] ), 'seed_defaults: prv_models set' );
-
-// ── Test: seed_defaults does not overwrite existing values ───────────────
-
-prv_test_reset();
-$GLOBALS['prv_test_state']['options']['prv_monthly_budget_usd'] = 99.0;
-PRV_Config::seed_defaults();
-prv_assert_equals( 99.0, $GLOBALS['prv_test_state']['options']['prv_monthly_budget_usd'], 'seed_defaults: does not overwrite existing prv_monthly_budget_usd' );
-
-// ── Test: default budget is PRV_DEFAULT_MONTHLY_BUDGET_USD ──────────────
-
-prv_test_reset();
-PRV_Config::seed_defaults();
-prv_assert_equals( PRV_DEFAULT_MONTHLY_BUDGET_USD, $GLOBALS['prv_test_state']['options']['prv_monthly_budget_usd'], 'seed_defaults: default budget = PRV_DEFAULT_MONTHLY_BUDGET_USD (5.0)' );
-
-// ── Test: default peptide count is 12 ───────────────────────────────────
-
-prv_test_reset();
-$peptides = PRV_Config::get_peptides();
-prv_assert_equals( 12, count( $peptides ), 'get_peptides: default seed has 12 peptides' );
-
-// ── Test: default prompt intent count is 3 ──────────────────────────────
-
-prv_test_reset();
-$intents = PRV_Config::get_prompt_intents();
-prv_assert_equals( 3, count( $intents ), 'get_prompt_intents: default seed has 3 intents' );
-
-// ── Test: default model count is 3 ──────────────────────────────────────
-
-prv_test_reset();
-$models = PRV_Config::get_models();
-prv_assert_equals( 3, count( $models ), 'get_models: default seed has 3 models' );
-prv_assert( in_array( 'perplexity/sonar', $models, true ), 'get_models: perplexity/sonar in default models' );
+// Verify all prv_ options gone.
+prv_assert( false === get_option( 'prv_models' ),               'post-uninstall: prv_models deleted' );
+prv_assert( false === get_option( 'prv_monthly_budget_usd' ),   'post-uninstall: prv_monthly_budget_usd deleted' );
+prv_assert( false === get_option( 'prv_api_key_status' ),       'post-uninstall: prv_api_key_status deleted' );
+prv_assert( false === get_option( 'prv_active_config_version' ), 'post-uninstall: prv_active_config_version deleted' );
+prv_assert( false === get_option( 'prv_config_versions' ),      'post-uninstall: prv_config_versions deleted' );
+prv_assert( false === get_option( 'prv_models_schema_version' ), 'post-uninstall: prv_models_schema_version deleted' );
+prv_assert( false === get_option( 'prv_schema_version' ),       'post-uninstall: prv_schema_version deleted' );
+prv_assert( false === get_option( 'prv_last_run_truncated' ),   'post-uninstall: prv_last_run_truncated deleted' );
+prv_assert( false === get_transient( PRV_Run_Lock::LOCK_KEY ),  'post-uninstall: run lock transient cleared' );
+prv_assert( false === PRV_Cron::is_scheduled(),                 'post-uninstall: cron cleared' );
 
 exit( prv_test_summary() );

@@ -56,3 +56,41 @@ Rename to PR Vision; fix www-strip in competitor display; PHPCS gating; remove d
 - `ARCHITECTURE.md`, `CONVENTIONS.md`, `CONTEXT.md` (incl. visibility score formula), `README.md`.
 - CI: PHP lint (8.1/8.2/8.3) + PHPCS + 300-line check (mirrors `peptide-repo-core`).
 - Seed config: 12 peptides, 3 prompt intents, Perplexity sonar + GPT-4o-search + Gemini-2.0-Flash.
+
+---
+
+## [0.2.0] — 2026-06-14
+
+Admin/Settings interface + correctness fixes. All adversarial-QA must-fixes addressed.
+
+### Added
+
+- **Model manager (`prv_models` v2):** CRUD for models via Settings page — add, enable/disable, remove, edit, without a code deploy. Per-model: provider, slug, enabled flag, operator note, run-health, Test button.
+- **`PRV_Model_Registry`:** manages the `prv_models` option in v2 rich-object format; migration from v0.1.x flat-string format is versioned, idempotent, and tested.
+- **`PRV_Upgrader`:** runs all pending migrations on every `plugins_loaded` (not just activation) so live-upgraded installs get migrated automatically.
+- **`PRV_Config_Version`:** stamps every run with the scored config (models × peptides × intents); bumps on scoring-relevant saves; `get_all_versions()` for trendline annotations.
+- **`PRV_Run_Lock`:** transient-based distributed lock preventing concurrent cron + "Run now" executions; `acquire()` / `release()` / `is_locked()`.
+- **`PRV_Settings_Page`:** "PR Vision → Settings" sub-menu with POST handlers for settings save, model CRUD, Run now, Test model AJAX. All actions `manage_options` + nonce gated.
+- **`PRV_Settings_Renderer`:** renders the dark "Assay" settings page (CSS variables, sticky save-bar with scoring-change warning, projected cost inset, API-key status, Run now).
+- **`PRV_Model_Manager_Table`:** renders the model manager table with health badges, keyboard-sortable `<button aria-sort>` headers, disabled-toggle for retired rows, Test chips with `aria-live`.
+- **`PRV_Model_Test_Ajax`:** rate-limited AJAX handler for point-in-time model-slug validation.
+- **Per-model run-health:** `PRV_Model_Registry::update_health()` called at end of each run; "Retired?" badge when `probed=0 && errors>0`.
+- **Metric comparability:** config-version stamp on every DB row (`config_version` INT column); bump + warning on scoring-relevant save; break annotation hook for dashboard trendline.
+- **Projected cost at save:** `PRV_Config::get_projected_cost()` returns per_run / per_month / probe_count / over_cap; displayed live on settings page.
+- **Budget truncation state:** `prv_last_run_truncated` option set when a run hits the cap mid-way; surfaced in run-done notices and dashboard data.
+- **Cadence reschedule:** `PRV_Cron::reschedule()` clears + re-adds the WP-Cron event on cadence change; next-run timestamp shown.
+- **API-key three-state:** "Not defined" / "Defined — last run OK" / "Defined — last run failed" derived from `prv_api_key_status` ledger option; never displays the key.
+- **Design criticals (v2 mockups):** dark ink focus ring on bright fills; disabled-row text at full AA (no opacity collapse), toggle genuinely `disabled`; save-bar-level warning with `role=alert`; "Not yet" chip `#B4BDC7` (6.83:1 AA); keyboard-operable sortable headers (`<button>` + `aria-sort`); `aria-live="polite"` on Test chip + Run-now status; sticky save-bar `z-index:50`; Run-now double-fire guard; `@media print` light overrides.
+- New unit tests: `test-model-registry.php` (migration, CRUD, health), `test-run-lock.php` (acquire/release/sentinel), `test-config-version.php` (hash, bump, stamp), `test-projected-cost.php` (probe_count, over_cap, truncation), `test-cron-reschedule.php` (reschedule, idempotent, tick guard).
+
+### Changed
+
+- `PRV_Config::get_models()` now delegates to `PRV_Model_Registry::get_enabled_slugs()`.
+- `PRV_Config::seed_defaults()` no longer seeds `prv_models` directly (handled by `PRV_Upgrader`).
+- `PRV_Config` adds `CADENCE_KEY` constant, `get_cadence()`, `get_projected_cost()`.
+- `PRV_Probe_Runner::run()` acquires run-lock, stamps `config_version` on each row, updates model health, sets truncation option, returns `truncated` + `run_id` keys.
+- `PRV_Table_Manager::create_table()` adds `config_version INT NULL` column; schema version bumped to 2.
+- `PRV_Cron` adds `reschedule()`, `next_run_timestamp()`, cadence-aware `schedule()`; `handle_cron_tick()` skips if run-lock held.
+- `PRV_Plugin::init()` boots `PRV_Upgrader::run()` first and registers `PRV_Settings_Page`.
+- `uninstall.php` also purges `prv_` transients (run-lock etc.).
+- Version bumped to **0.2.0**.

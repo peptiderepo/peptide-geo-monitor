@@ -12,10 +12,10 @@ declare(strict_types=1);
  *
  * Converts PRV_* class/interface names to file paths under includes/.
  * Naming conventions:
- *   PRV_Foo_Bar (class)      → class-prv-foo-bar.php
- *   PRV_Foo_Bar (interface)  → interface-prv-foo-bar.php (tried second)
+ *   PRV_Foo_Bar (class)      -- class-prv-foo-bar.php
+ *   PRV_Foo_Bar (interface)  -- interface-prv-foo-bar.php (tried second)
  *
- * Who triggers: Plugin boot (pr-vision.php) — called once before
+ * Who triggers: Plugin boot (pr-vision.php) -- called once before
  *               any PRV_* class or interface is instantiated.
  * Dependencies: None (pure PHP).
  *
