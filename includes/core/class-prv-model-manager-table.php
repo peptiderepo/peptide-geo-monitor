@@ -75,12 +75,12 @@ class PRV_Model_Manager_Table {
 		echo '<tr class="' . esc_attr( $row_class ) . '">';
 
 		// Provider.
-		echo '<td>' . $prov . '</td>';
+		echo '<td>' . esc_html( $prov ) . '</td>';
 
 		// Slug (monospace).
-		echo '<td><code style="background:var(--prv-surface3);padding:1px 5px;border-radius:3px;font-size:12px;' . ( $retired ? 'text-decoration:line-through;' : '' ) . '">' . $slug . '</code>';
+		echo '<td><code style="background:var(--prv-surface3);padding:1px 5px;border-radius:3px;font-size:12px;' . ( $retired ? 'text-decoration:line-through;' : '' ) . '">' . esc_html( $slug ) . '</code>';
 		if ( $note ) {
-			echo '<br><span style="color:var(--prv-text-muted);font-size:11px">' . $note . '</span>';
+			echo '<br><span style="color:var(--prv-text-muted);font-size:11px">' . esc_html( $note ) . '</span>';
 		}
 		echo '</td>';
 
@@ -89,13 +89,14 @@ class PRV_Model_Manager_Table {
 		$form_name = 'prv_enable_' . $id;
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline">';
 		echo '<input type="hidden" name="action" value="prv_model_update">';
-		echo '<input type="hidden" name="prv_model_id" value="' . $id . '">';
+		echo '<input type="hidden" name="prv_model_id" value="' . esc_attr( $id ) . '">';
 		echo '<input type="hidden" name="prv_model_slug" value="' . esc_attr( (string) ( $m['slug'] ?? '' ) ) . '">';
 		echo '<input type="hidden" name="prv_model_note" value="' . esc_attr( (string) ( $m['note'] ?? '' ) ) . '">';
 		wp_nonce_field( PRV_Settings_Page::NONCE_MODEL, 'prv_nonce' );
 		// Disabled toggle for retired models.
 		$toggle_attrs = $retired ? ' disabled aria-disabled="true"' : '';
 		$checked_attr = $enabled ? ' checked' : '';
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- $checked_attr and $toggle_attrs are hard-coded attribute strings; $enabled is a boolean cast.
 		echo '<input type="checkbox" name="prv_model_enabled" onchange="this.form.submit()" ' . $checked_attr . $toggle_attrs . ' title="' . ( $enabled ? 'Disable' : 'Enable' ) . '">';
 		echo '</form>';
 		if ( $retired ) {
@@ -104,12 +105,13 @@ class PRV_Model_Manager_Table {
 		echo '</td>';
 
 		// Run health.
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- render_health_badge() returns pre-escaped HTML markup.
 		echo '<td>' . $this->render_health_badge( $m ) . '</td>';
 
 		// Test button + chip.
 		$chip_id = 'prv-test-chip-' . $id;
 		echo '<td>';
-		echo '<button type="button" class="prv-btn prv-btn-ghost prv-test-btn" data-model-id="' . $id . '">';
+		echo '<button type="button" class="prv-btn prv-btn-ghost prv-test-btn" data-model-id="' . esc_attr( $id ) . '">';
 		echo esc_html__( 'Test', 'pr-vision' );
 		echo '</button>';
 		echo ' <span id="' . esc_attr( $chip_id ) . '" class="prv-badge prv-badge-unknown" role="status" aria-live="polite"></span>';
@@ -119,7 +121,7 @@ class PRV_Model_Manager_Table {
 		echo '<td>';
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline" onsubmit="return confirm(\'Remove this model?\');">';
 		echo '<input type="hidden" name="action" value="prv_model_remove">';
-		echo '<input type="hidden" name="prv_model_id" value="' . $id . '">';
+		echo '<input type="hidden" name="prv_model_id" value="' . esc_attr( $id ) . '">';
 		wp_nonce_field( PRV_Settings_Page::NONCE_MODEL, 'prv_nonce' );
 		echo '<button type="submit" class="prv-btn prv-btn-danger">' . esc_html__( 'Remove', 'pr-vision' ) . '</button>';
 		echo '</form>';

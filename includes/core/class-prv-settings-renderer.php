@@ -169,7 +169,12 @@ class PRV_Settings_Renderer {
 		$next_str = $next_ts ? gmdate( 'Y-m-d H:i T', (int) $next_ts ) : 'Not scheduled';
 		echo '<div class="prv-field"><label class="prv-label" for="prv_cadence">' . esc_html__( 'Probe cadence', 'pr-vision' ) . '</label>';
 		echo '<select class="prv-input" id="prv_cadence" name="prv_cadence" data-scoring-relevant="1" style="max-width:200px">';
-		foreach ( array( 'weekly' => 'Weekly', 'twicedaily' => 'Twice daily', 'daily' => 'Daily' ) as $v => $l ) {
+		$cadence_options = array(
+			'weekly'     => 'Weekly',
+			'twicedaily' => 'Twice daily',
+			'daily'      => 'Daily',
+		);
+		foreach ( $cadence_options as $v => $l ) {
 			echo '<option value="' . esc_attr( $v ) . '"' . selected( $cadence, $v, false ) . '>' . esc_html( $l ) . '</option>';
 		}
 		echo '</select>';

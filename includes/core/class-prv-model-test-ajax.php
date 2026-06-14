@@ -74,18 +74,22 @@ class PRV_Model_Test_Ajax {
 		try {
 			$provider->probe( 'what is BPC-157' );
 			$ms = (int) round( ( microtime( true ) - $start ) * 1000 );
-			wp_send_json_success( array(
-				'resolved'   => true,
-				'latency_ms' => $ms,
-				'slug'       => $slug,
-				'message'    => sprintf( 'Resolved · %d ms', $ms ),
-			) );
+			wp_send_json_success(
+				array(
+					'resolved'   => true,
+					'latency_ms' => $ms,
+					'slug'       => $slug,
+					'message'    => sprintf( 'Resolved · %d ms', $ms ),
+				)
+			);
 		} catch ( \Exception $e ) {
-			wp_send_json_error( array(
-				'resolved' => false,
-				'slug'     => $slug,
-				'message'  => 'Not resolved -- provider returned error (slug retired?)',
-			) );
+			wp_send_json_error(
+				array(
+					'resolved' => false,
+					'slug'     => $slug,
+					'message'  => 'Not resolved -- provider returned error (slug retired?)',
+				)
+			);
 		}
 	}
 }

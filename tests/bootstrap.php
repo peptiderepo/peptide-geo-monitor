@@ -174,8 +174,6 @@ function wp_send_json_success( $data = null ): void { throw new \RuntimeExceptio
 function wp_send_json_error( $data = null ): void { throw new \RuntimeException( 'json_error:' . json_encode( $data ) ); }
 
 function is_wp_error( $thing ): bool { return $thing instanceof WP_Error; }
-function defined( string $constant ): bool { return \defined( $constant ); }
-function constant( string $constant ) { return \constant( $constant ); }
 
 function selected( $selected, $current = true, bool $echo = true ): string {
 	$str = ( (string) $selected === (string) $current ) ? ' selected="selected"' : '';

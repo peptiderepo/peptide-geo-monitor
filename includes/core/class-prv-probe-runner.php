@@ -97,7 +97,10 @@ class PRV_Probe_Runner {
 		$model_outcomes = array(); // Per-slug: {probed, errors}.
 
 		foreach ( $models as $slug ) {
-			$model_outcomes[ $slug ] = array( 'probed' => 0, 'errors' => 0 );
+			$model_outcomes[ $slug ] = array(
+				'probed' => 0,
+				'errors' => 0,
+			);
 		}
 
 		$counts = array(
@@ -233,7 +236,7 @@ class PRV_Probe_Runner {
 	/**
 	 * Derive + persist the API-key status from run outcomes.
 	 *
-	 * @param array<string, mixed> $counts        Run counts.
+	 * @param array<string, mixed>                         $counts         Run counts.
 	 * @param array<string, array{probed: int, errors: int}> $model_outcomes Model outcomes.
 	 *
 	 * @return void

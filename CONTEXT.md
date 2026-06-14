@@ -1,6 +1,6 @@
 # Context — Domain Glossary (PR Vision)
 
-**Version:** 0.1.1 | **Last updated:** 2026-06-13
+**Version:** 0.2.0 | **Last updated:** 2026-06-14
 
 This file is the ubiquitous-language glossary for `pr-vision`. Every term below has a precise meaning within this codebase. AI agents and human contributors should use this terminology consistently.
 
@@ -78,6 +78,41 @@ An implementation of `PRV_Probe_Provider` that wraps one LLM backend. v1 ships `
 The extensibility mechanism: `PRV_Data_Collector` produces data; `PRV_Dashboard_Panel` renders it. Both are registered with `PRV_Collector_Registry`. v1 ships only the AI-visibility pair; future SEO categories add new pairs without touching the shell.
 
 **Code identifiers:** `interface-prv-data-collector.php`, `interface-prv-dashboard-panel.php`, `PRV_Collector_Registry`.
+
+### Config Version
+A monotonically incrementing integer (stored in the `prv_config_versions` option) that is bumped whenever the active probe configuration changes (models list, peptides list, or prompt intents). Each row in `prv_ai_visibility` is stamped with the `config_version` at the time it was recorded. Rows from a different config version are excluded from scoring to ensure comparability.
+
+**Code identifiers:** `PRV_Config_Version`, `bump_version_if_changed()`, `config_version` column, `prv_config_versions` option.
+
+### Run Lock
+A transient-backed mutex (`prv_run_lock`) that prevents concurrent probe runs. Acquired at the start of a run and released in a `finally` block. TTL is 1 hour to self-clear on fatal crash. Both the cron tick and the "Run now" button check `is_locked()` before dispatching.
+
+**Code identifiers:** `PRV_Run_Lock`, `acquire()`, `release()`, `is_locked()`, transient `prv_run_lock`.
+
+### Model Registry
+A versioned option (`prv_models`) storing the list of LLM models to probe. Each entry is a rich object with `{id, provider, slug, enabled, note, health_status, health_probed, health_errors, health_run_id}`. The registry migrates v0.1.x flat-string arrays to v2 schema on upgrade. CRUD is exposed on the Settings page.
+
+**Code identifiers:** `PRV_Model_Registry`, `run_migration_v2()`, `prv_models` option, `PRV_SCHEMA_VERSION` constant.
+
+### Run Health
+A per-model health status derived from the most recent probe run outcomes. Values: `healthy` (probes succeeded), `retired` (zero rows, errors occurred), `disabled` (model not enabled), `unknown` (not yet run). Displayed as a badge in the Model Manager table. Updated by `PRV_Model_Registry::update_health()` at end of each run.
+
+**Code identifiers:** `health_status`, `health_probed`, `health_errors`, `health_run_id` fields; `PRV_Model_Registry::update_health()`; `render_health_badge()`.
+
+### Projected Cost
+The estimated monthly spend (in USD) based on the current configuration: `enabled_models × peptides × intents × $0.005/probe × runs_per_month`. Displayed on the Settings page as a cost inset. The `over_cap` flag is shown with `aria-live="polite"` when the projected cost would exceed the monthly budget.
+
+**Code identifiers:** `PRV_Config::get_projected_cost()`, `per_run_usd`, `per_month_usd`, `probe_count`, `over_cap` return keys.
+
+### Config-version Stamp
+The act of recording the active `config_version` integer on each `prv_ai_visibility` row at insert time. Enables retrospective filtering: only rows with `config_version = active_version` are included in current-period scoring, preventing cross-config score pollution.
+
+**Code identifiers:** `config_version` column in `prv_ai_visibility`, `PRV_Config_Version::get_active_version()`.
+
+### Truncation State
+When the monthly budget cap is reached mid-run, `prv_last_run_truncated` is set to `1`. This surfaces on the Settings page as a notice: "Last run was truncated by the monthly budget cap." The flag is cleared on the next successful full run. Probes after the cap are skipped (not errored) and counted in `skipped_budget`.
+
+**Code identifiers:** `prv_last_run_truncated` option, `PRV_Cost_Ledger::can_afford()`, `skipped_budget` count, `truncated` flag in run counts.
 
 ### GEO
 Generative Engine Optimization — the practice of improving a brand's visibility in AI-generated responses. This plugin is the measurement instrument for peptiderepo.com's GEO program.

@@ -10,7 +10,7 @@ declare(strict_types=1);
 /**
  * Manages prv_models: v0.1.x→v0.2.0 migration, CRUD, per-model run-health.
  *
- * v2 schema: [{id, provider, slug, enabled, note, health_status, health_probed,
+ * V2 schema: [{id, provider, slug, enabled, note, health_status, health_probed,
  *              health_errors, health_run_id}]. v1 legacy: flat string array.
  *
  * Who triggers: PRV_Upgrader::run() (upgrade path); PRV_Settings_Page (CRUD).
@@ -196,8 +196,8 @@ class PRV_Model_Registry {
 	 *
 	 * Side effects: Updates prv_models option.
 	 *
-	 * @param string                                          $run_id   UUID of completed run.
-	 * @param array<string, array{probed: int, errors: int}> $outcomes Per-slug outcome.
+	 * @param string                                           $run_id   UUID of completed run.
+	 * @param array<string, array{probed: int, errors: int}>  $outcomes Per-slug outcome.
 	 *
 	 * @return void
 	 */

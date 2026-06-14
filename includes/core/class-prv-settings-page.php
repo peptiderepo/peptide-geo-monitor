@@ -115,6 +115,7 @@ class PRV_Settings_Page {
 		$this->require_admin_nonce( self::NONCE_SAVE );
 		$old_cadence = PRV_Config::get_cadence();
 
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- nonce verified above via require_admin_nonce().
 		$budget  = isset( $_POST['prv_monthly_budget_usd'] )
 			? max( 0.01, (float) sanitize_text_field( wp_unslash( (string) $_POST['prv_monthly_budget_usd'] ) ) )
 			: PRV_DEFAULT_MONTHLY_BUDGET_USD;
@@ -148,6 +149,7 @@ class PRV_Settings_Page {
 			$intent_lines = array_filter( array_map( 'trim', explode( "\n", $raw_intents ) ) );
 			update_option( 'prv_prompt_intents', array_values( $intent_lines ) );
 		}
+		// phpcs:enable WordPress.Security.NonceVerification.Missing
 
 		PRV_Config_Version::bump_version_if_changed();
 
@@ -168,10 +170,12 @@ class PRV_Settings_Page {
 	 */
 	public function handle_model_add(): void {
 		$this->require_admin_nonce( self::NONCE_MODEL );
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- nonce verified above via require_admin_nonce().
 		$slug     = sanitize_text_field( wp_unslash( (string) ( $_POST['prv_model_slug'] ?? '' ) ) );
 		$provider = sanitize_text_field( wp_unslash( (string) ( $_POST['prv_model_provider'] ?? 'openrouter' ) ) );
 		$note     = sanitize_text_field( wp_unslash( (string) ( $_POST['prv_model_note'] ?? '' ) ) );
 		$enabled  = ! empty( $_POST['prv_model_enabled'] );
+		// phpcs:enable WordPress.Security.NonceVerification.Missing
 		if ( '' !== $slug ) {
 			PRV_Model_Registry::add( $slug, $provider, $enabled, $note );
 			PRV_Config_Version::bump_version_if_changed();
@@ -189,10 +193,12 @@ class PRV_Settings_Page {
 	 */
 	public function handle_model_update(): void {
 		$this->require_admin_nonce( self::NONCE_MODEL );
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- nonce verified above via require_admin_nonce().
 		$id      = sanitize_text_field( wp_unslash( (string) ( $_POST['prv_model_id'] ?? '' ) ) );
 		$slug    = sanitize_text_field( wp_unslash( (string) ( $_POST['prv_model_slug'] ?? '' ) ) );
 		$enabled = ! empty( $_POST['prv_model_enabled'] );
 		$note    = sanitize_text_field( wp_unslash( (string) ( $_POST['prv_model_note'] ?? '' ) ) );
+		// phpcs:enable WordPress.Security.NonceVerification.Missing
 		if ( '' !== $id && '' !== $slug ) {
 			PRV_Model_Registry::update( $id, array( 'slug' => $slug, 'enabled' => $enabled, 'note' => $note ) );
 			PRV_Config_Version::bump_version_if_changed();
@@ -210,7 +216,9 @@ class PRV_Settings_Page {
 	 */
 	public function handle_model_remove(): void {
 		$this->require_admin_nonce( self::NONCE_MODEL );
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- nonce verified above via require_admin_nonce().
 		$id = sanitize_text_field( wp_unslash( (string) ( $_POST['prv_model_id'] ?? '' ) ) );
+		// phpcs:enable WordPress.Security.NonceVerification.Missing
 		if ( '' !== $id ) {
 			PRV_Model_Registry::remove( $id );
 			PRV_Config_Version::bump_version_if_changed();

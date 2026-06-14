@@ -94,3 +94,10 @@ Admin/Settings interface + correctness fixes. All adversarial-QA must-fixes addr
 - `PRV_Plugin::init()` boots `PRV_Upgrader::run()` first and registers `PRV_Settings_Page`.
 - `uninstall.php` also purges `prv_` transients (run-lock etc.).
 - Version bumped to **0.2.0**.
+
+### CI
+
+- **P1-A:** Removed `function defined()` and `function constant()` declarations from `tests/bootstrap.php` — they shadowed PHP built-ins and caused `Cannot redeclare` fatal on PHP 8.x, blocking all unit-test CI steps.
+- **P1-B:** Re-escaped pre-escaped variables at echo site in `class-prv-model-manager-table.php`; added targeted `phpcs:ignore` with justification for `render_health_badge()` (returns pre-escaped HTML).
+- **P1-C:** Added `phpcs:disable/enable WordPress.Security.NonceVerification.Missing` around `$_POST` blocks in all four `handle_*()` methods in `class-prv-settings-page.php`; nonce is verified via `require_admin_nonce()` private helper.
+- **P1-D/E:** Expanded inline associative arrays to multi-line in `class-prv-config.php`, `class-prv-probe-runner.php`, `class-prv-settings-renderer.php`, `class-prv-model-test-ajax.php`; fixed param-comment spacing in `class-prv-model-registry.php`; capitalised docblock long-description first word.
