@@ -106,26 +106,25 @@ class PRV_Key_Manager_Renderer {
 	 * @return void
 	 */
 	private function render_key_form( bool $is_const, bool $is_set_opt ): void {
-		$form_url = esc_url( admin_url( 'admin-post.php' ) );
-		echo '<form method="post" action="' . $form_url . '" id="prv-key-set-form" autocomplete="off">';
+		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" id="prv-key-set-form" autocomplete="off">';
 		echo '<input type="hidden" name="action" value="prv_key_set">';
 		wp_nonce_field( PRV_Settings_Page::NONCE_KEY, 'prv_nonce' );
 
 		echo '<div class="prv-field" style="margin-top:12px">';
 		echo '<label class="prv-label" for="prv_api_key">';
-		echo esc_html( $is_set_opt
+		echo esc_html(
+			$is_set_opt
 			? __( 'Replace key (leave empty to keep current)', 'pr-vision' )
 			: __( 'Set key', 'pr-vision' )
 		);
 		echo '</label>';
 
-		$disabled = $is_const ? ' disabled aria-disabled="true"' : '';
 		// Input always renders empty — never outputs stored key.
 		echo '<input type="password" id="prv_api_key" name="prv_api_key" '
 			. 'class="prv-input" style="max-width:420px" '
 			. 'value="" autocomplete="new-password" '
 			. 'placeholder="' . esc_attr( $is_const ? __( 'Managed via wp-config — cannot override', 'pr-vision' ) : __( 'sk-or-…', 'pr-vision' ) ) . '"'
-			. $disabled . '>';
+			. ( $is_const ? ' disabled aria-disabled="true"' : '' ) . '>';
 
 		if ( $is_const ) {
 			echo '<p style="color:var(--prv-text-muted);font-size:12px;margin:4px 0 0">'
@@ -145,7 +144,7 @@ class PRV_Key_Manager_Renderer {
 
 		// Remove key form (only when admin option is set, not constant).
 		if ( $is_set_opt && ! $is_const ) {
-			echo '<form method="post" action="' . $form_url . '" id="prv-key-remove-form" style="margin-top:8px">';
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" id="prv-key-remove-form" style="margin-top:8px">';
 			echo '<input type="hidden" name="action" value="prv_key_remove">';
 			wp_nonce_field( PRV_Settings_Page::NONCE_KEY, 'prv_nonce' );
 			echo '<button type="submit" class="prv-btn prv-btn-danger" '

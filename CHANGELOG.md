@@ -10,6 +10,7 @@ Versioning: [Semantic Versioning](https://semver.org/)
 ## [0.2.3] — 2026-06-15
 
 UI-editable provider API key: encrypted at rest, write-only, wp-config precedence.
+Output-escaping hardening in key manager renderer (`esc_url`/`esc_attr`/literal-conditional on all echoed values).
 
 ### Added
 
