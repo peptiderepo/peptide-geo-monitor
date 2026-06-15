@@ -1,36 +1,20 @@
 <?php
 /**
- * Executes the inner loop of a probe run (v0.3.0 extraction).
+ * Inner probe loop executor split from PRV_Probe_Runner (v0.3.0).
+ * P0: can_afford → probe → persist → update_cost → write_meta → [swallowed] capture_io.
  *
+ * @see class-prv-probe-runner.php   — Acquires run-lock + calls execute().
+ * @see class-prv-capture-writer.php — Allowlist-only capture writer.
  * @package PrVision
  */
 
 declare(strict_types=1);
-
-/**
- * Executes one probe run's inner loop: peptides × intents × models.
- * Split from PRV_Probe_Runner to stay under 300 lines.
- *
- * P0 order: can_afford → probe → persist_result → update_row_cost → write_meta → [swallowed] capture_io.
- *
- * @see class-prv-probe-runner.php   — Acquires lock + calls execute().
- * @see class-prv-capture-writer.php — Allowlist-only capture writer (P0).
- * @package PrVision
- */
 class PRV_Probe_Run_Executor {
 
-	/**
-	 * Budget ledger for cost-cap enforcement.
-	 *
-	 * @var PRV_Cost_Ledger
-	 */
+	/** @var PRV_Cost_Ledger Budget ledger for cost-cap enforcement. */
 	private PRV_Cost_Ledger $ledger;
 
-	/**
-	 * Per-call capture writer (best-effort; never in critical path).
-	 *
-	 * @var PRV_Capture_Writer
-	 */
+	/** @var PRV_Capture_Writer Per-call capture writer (best-effort; never in critical path). */
 	private PRV_Capture_Writer $capture;
 
 	/**
@@ -47,10 +31,8 @@ class PRV_Probe_Run_Executor {
 	/**
 	 * Run the full peptide × intent × model loop.
 	 *
-	 * Side effects: HTTP calls to LLM APIs, database writes, option writes.
-	 *
 	 * @param string $run_id     UUID for this run.
-	 * @param int    $config_ver Config version at run time.
+	 * @param int    $config_ver Config version.
 	 * @return array{probed: int, skipped_budget: int, skipped_error: int, truncated: bool, run_id: string}
 	 */
 	public function execute(
@@ -105,18 +87,18 @@ class PRV_Probe_Run_Executor {
 	}
 
 	/**
-	 * Execute one probe combination in mandatory P0 order.
+	 * Execute one probe combination: can_afford → probe → persist → capture (P0 order).
 	 *
-	 * @param string                                     $run_id         Run UUID.
-	 * @param array<string,string>                       $peptide        Peptide config.
-	 * @param string                                     $model          Model slug.
-	 * @param string                                     $intent_tpl     Intent template.
-	 * @param string                                     $query          Rendered query.
-	 * @param int                                        $config_ver     Config version.
-	 * @param array<string,mixed>                        &$counts        Counts (modified).
-	 * @param array<string,array{probed:int,errors:int}> &$model_outcomes Outcomes (modified).
-	 * @param bool                                       &$budget_hit    Budget flag (modified).
-	 * @return void Modifies $counts and $model_outcomes in-place.
+	 * @param string               $run_id         Run UUID.
+	 * @param array<string,string> $peptide        Peptide config.
+	 * @param string               $model          Model slug.
+	 * @param string               $intent_tpl     Intent template.
+	 * @param string               $query          Rendered query string.
+	 * @param int                  $config_ver     Config version.
+	 * @param array<string,mixed>  &$counts        Counts accumulator.
+	 * @param array<string,array>  &$model_outcomes Per-model outcome map.
+	 * @param bool                 &$budget_hit    Budget exhaustion flag.
+	 * @return void
 	 */
 	private function probe_one(
 		string $run_id,
@@ -161,22 +143,23 @@ class PRV_Probe_Run_Executor {
 			if ( isset( $model_outcomes[ $model ] ) ) {
 				++$model_outcomes[ $model ]['errors'];
 			}
-			// phpcs:disable WordPress.Arrays.ArrayDeclarationSpacing.AssociativeArrayFound, WordPress.Arrays.ArrayDeclarationSpacing.ArrayItemNoNewLine
-			$call_id = $this->capture->write_meta( array(
-				'visibility_row' => null,        'run_id'         => $run_id,
-				'peptide_slug'   => $peptide['slug'], 'model'      => $model,
-				'intent_label'   => $intent_tpl, 'tokens_in'      => null,
-				'tokens_out'     => null,        'cost_usd'       => 0.0,
-				'latency_ms'     => $latency_ms, 'cited'          => null,
-				'http_status'    => $http_status, 'config_version' => $config_ver,
-			) );
-			// phpcs:enable
-			if ( $call_id > 0 ) {
+			// phpcs:disable WordPress.Arrays.ArrayDeclarationSpacing.ArrayItemNoNewLine
+			$cid = $this->capture->write_meta(
+				array(
+					'visibility_row' => null,            'run_id'         => $run_id,
+					'peptide_slug'   => $peptide['slug'], 'model'         => $model,
+					'intent_label'   => $intent_tpl,     'tokens_in'     => null,
+					'tokens_out'     => null,            'cost_usd'      => 0.0,
+					'latency_ms'     => $latency_ms,     'cited'         => null,
+					'http_status'    => $http_status,    'config_version' => $config_ver,
+				)
+			); // phpcs:enable
+			if ( $cid > 0 ) {
 				try {
-					$this->capture->write_io( $call_id, $query, '' );
-				} catch ( \Throwable $io_err ) {
+					$this->capture->write_io( $cid, $query, '' );
+				} catch ( \Throwable $e2 ) {
 					// Best-effort: I/O capture failure must not propagate (P0-4).
-					unset( $io_err );
+					unset( $e2 );
 				}
 			}
 			return;
@@ -187,22 +170,23 @@ class PRV_Probe_Run_Executor {
 			$this->ledger->update_row_cost( $row_id, $result->get_cost_usd() );
 		}
 
-		// phpcs:disable WordPress.Arrays.ArrayDeclarationSpacing.AssociativeArrayFound, WordPress.Arrays.ArrayDeclarationSpacing.ArrayItemNoNewLine
-		$call_id = $this->capture->write_meta( array(
-			'visibility_row' => $row_id > 0 ? $row_id : null, 'run_id'     => $run_id,
-			'peptide_slug'   => $peptide['slug'],             'model'       => $model,
-			'intent_label'   => $intent_tpl,  'tokens_in'   => $result->get_tokens_in(),
-			'tokens_out'     => $result->get_tokens_out(),    'cost_usd'    => $result->get_cost_usd(),
-			'latency_ms'     => $latency_ms,  'cited'        => $result->is_cited() ? 1 : 0,
-			'http_status'    => $http_status, 'config_version' => $config_ver,
-		) );
-		// phpcs:enable
-		if ( $call_id > 0 ) {
+		// phpcs:disable WordPress.Arrays.ArrayDeclarationSpacing.ArrayItemNoNewLine
+		$cid = $this->capture->write_meta(
+			array(
+				'visibility_row' => $row_id > 0 ? $row_id : null, 'run_id'    => $run_id,
+				'peptide_slug'   => $peptide['slug'],             'model'      => $model,
+				'intent_label'   => $intent_tpl,     'tokens_in'  => $result->get_tokens_in(),
+				'tokens_out'     => $result->get_tokens_out(),    'cost_usd'  => $result->get_cost_usd(),
+				'latency_ms'     => $latency_ms,     'cited'      => $result->is_cited() ? 1 : 0,
+				'http_status'    => $http_status,    'config_version' => $config_ver,
+			)
+		); // phpcs:enable
+		if ( $cid > 0 ) {
 			try {
-				$this->capture->write_io( $call_id, $query, $result->get_raw_excerpt() );
-			} catch ( \Throwable $io_err ) {
+				$this->capture->write_io( $cid, $query, $result->get_raw_excerpt() );
+			} catch ( \Throwable $e2 ) {
 				// Best-effort: I/O capture failure must not propagate (P0-4).
-				unset( $io_err );
+				unset( $e2 );
 			}
 		}
 
@@ -226,18 +210,25 @@ class PRV_Probe_Run_Executor {
 	private function persist_result( string $run_id, array $peptide, string $model, string $intent_tpl, PRV_Probe_Result $result, int $config_ver ): int {
 		global $wpdb;
 		$table = PRV_Table_Manager::get_table_name();
-		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.Arrays.ArrayDeclarationSpacing.ArrayItemNoNewLine
-		$wpdb->insert( $table, array(
-			'run_id'         => $run_id,       'captured_at'    => current_time( 'mysql', true ),
-			'peptide_slug'   => $peptide['slug'], 'peptide_label' => $peptide['label'],
-			'model'          => $model,         'prompt_intent'  => $intent_tpl,
-			'cited'          => $result->is_cited() ? 1 : 0, 'our_position' => $result->get_our_position(),
-			'source_domains' => wp_json_encode( $result->get_source_domains() ),
-			'raw_excerpt'    => $result->get_raw_excerpt(),
-			'cost_usd'       => number_format( $result->get_cost_usd(), 8, '.', '' ),
-			'config_version' => $config_ver,
-		), array( '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%s', '%d' ) );
-		// phpcs:enable
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		$wpdb->insert(
+			$table,
+			array(
+				'run_id'         => $run_id,
+				'captured_at'    => current_time( 'mysql', true ),
+				'peptide_slug'   => $peptide['slug'],
+				'peptide_label'  => $peptide['label'],
+				'model'          => $model,
+				'prompt_intent'  => $intent_tpl,
+				'cited'          => $result->is_cited() ? 1 : 0,
+				'our_position'   => $result->get_our_position(),
+				'source_domains' => wp_json_encode( $result->get_source_domains() ),
+				'raw_excerpt'    => $result->get_raw_excerpt(),
+				'cost_usd'       => number_format( $result->get_cost_usd(), 8, '.', '' ),
+				'config_version' => $config_ver,
+			),
+			array( '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%s', '%d' )
+		);
 		return (int) $wpdb->insert_id;
 	}
 

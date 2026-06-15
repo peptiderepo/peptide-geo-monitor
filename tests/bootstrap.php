@@ -50,6 +50,7 @@ $GLOBALS['prv_test_state'] = [
 	'wpdb_insert_id'       => 1,
 	'wpdb_results'         => [],
 	'wpdb_var'             => null,
+	'wpdb_row'             => null,
 	'cron_events'          => [],
 	'remote_posts'         => [],
 	'wpdb_call_meta_rows'  => [],
@@ -65,6 +66,7 @@ function prv_test_reset(): void {
 		'wpdb_insert_id'       => 1,
 		'wpdb_results'         => [],
 		'wpdb_var'             => null,
+		'wpdb_row'             => null,
 		'cron_events'          => [],
 		'remote_posts'         => [],
 		'wpdb_call_meta_rows'  => [],
@@ -260,6 +262,7 @@ class stdClass_wpdb {
 	public function get_results( string $query, string $output = 'OBJECT' ): array {
 		return is_array( $GLOBALS['prv_test_state']['wpdb_results'] ) ? $GLOBALS['prv_test_state']['wpdb_results'] : [];
 	}
+	public function get_row( string $query, string $output = 'OBJECT' ): mixed { return $GLOBALS['prv_test_state']['wpdb_row'] ?? null; }
 	public function get_var( string $query ): mixed { return $GLOBALS['prv_test_state']['wpdb_var']; }
 }
 

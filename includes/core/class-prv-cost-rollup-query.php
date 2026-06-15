@@ -42,10 +42,9 @@ class PRV_Cost_Rollup_Query {
 		$table = PRV_Call_Meta_Table::get_table_name();
 		$month = gmdate( 'Y-m' );
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				"SELECT COALESCE(SUM(cost_usd),0) AS total_cost, COUNT(*) AS total_calls
 				   FROM {$table}
 				  WHERE DATE_FORMAT(captured_at, %s) = %s",
@@ -54,6 +53,7 @@ class PRV_Cost_Rollup_Query {
 			),
 			ARRAY_A
 		);
+		// phpcs:enable
 
 		$total_cost  = (float) ( $row['total_cost'] ?? 0.0 );
 		$total_calls = (int) ( $row['total_calls'] ?? 0 );
@@ -79,10 +79,9 @@ class PRV_Cost_Rollup_Query {
 		$table = PRV_Call_Meta_Table::get_table_name();
 		$month = gmdate( 'Y-m' );
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				"SELECT model,
 				        COUNT(*) AS calls,
 				        COALESCE(SUM(cost_usd),0) AS mtd_cost
@@ -96,6 +95,7 @@ class PRV_Cost_Rollup_Query {
 			),
 			ARRAY_A
 		);
+		// phpcs:enable
 
 		$result = array();
 		foreach ( (array) $rows as $row ) {

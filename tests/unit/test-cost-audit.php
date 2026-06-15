@@ -14,16 +14,16 @@ echo "=== test-cost-audit ===\n";
 prv_test_reset();
 
 // ── Test 1: per-call cost sum reconciles to MTD via PRV_Cost_Rollup_Query ─
-// Seed the wpdb_var mock (returned by get_var) to simulate MTD total.
+// Seed get_row mock (used by get_mtd_summary) and get_var (used by PRV_Cost_Ledger).
+$GLOBALS['prv_test_state']['wpdb_row'] = array( 'total_cost' => '1.23456789', 'total_calls' => '5' );
 $GLOBALS['prv_test_state']['wpdb_var'] = '1.23456789';
-$rollup = new PRV_Cost_Rollup_Query();
+$rollup  = new PRV_Cost_Rollup_Query();
 $summary = $rollup->get_mtd_summary();
 prv_assert( $summary['total_cost'] > 0, 'get_mtd_summary returns positive cost when rows present' );
 
-// Reconcile: the same wpdb_var stub also underlies PRV_Cost_Ledger.
-$ledger  = new PRV_Cost_Ledger();
+// Reconcile: PRV_Cost_Ledger reads get_var; confirm it agrees with the seeded mock.
+$ledger         = new PRV_Cost_Ledger();
 $mtd_via_ledger = $ledger->get_month_to_date_usd();
-// Both read the same mock; confirm they agree.
 prv_assert_equals( (float) '1.23456789', $mtd_via_ledger, 'PRV_Cost_Ledger MTD matches mock value' );
 
 // ── Test 2: project_month_end returns a numeric value ────────────────────
