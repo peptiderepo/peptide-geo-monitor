@@ -1,20 +1,31 @@
 <?php
 /**
  * Inner probe loop executor split from PRV_Probe_Runner (v0.3.0).
- * P0: can_afford → probe → persist → update_cost → write_meta → [swallowed] capture_io.
  *
- * @see class-prv-probe-runner.php   — Acquires run-lock + calls execute().
- * @see class-prv-capture-writer.php — Allowlist-only capture writer.
  * @package PrVision
  */
 
 declare(strict_types=1);
+
+/**
+ * Executes one probe run's inner loop: peptides × intents × models.
+ * P0: can_afford → probe → persist → update_cost → write_meta → [swallowed] capture_io.
+ *
+ * @see class-prv-capture-writer.php — Allowlist-only capture writer (P0).
+ * @package PrVision
+ */
 class PRV_Probe_Run_Executor {
 
-	/** @var PRV_Cost_Ledger Budget ledger for cost-cap enforcement. */
+	/**
+	 * Budget ledger for cost-cap enforcement.
+	 * @var PRV_Cost_Ledger
+	 */
 	private PRV_Cost_Ledger $ledger;
 
-	/** @var PRV_Capture_Writer Per-call capture writer (best-effort; never in critical path). */
+	/**
+	 * Per-call capture writer (best-effort; never in critical path).
+	 * @var PRV_Capture_Writer
+	 */
 	private PRV_Capture_Writer $capture;
 
 	/**
@@ -143,7 +154,7 @@ class PRV_Probe_Run_Executor {
 			if ( isset( $model_outcomes[ $model ] ) ) {
 				++$model_outcomes[ $model ]['errors'];
 			}
-			// phpcs:disable WordPress.Arrays.ArrayDeclarationSpacing.ArrayItemNoNewLine
+			// phpcs:disable WordPress.Arrays.ArrayDeclarationSpacing.ArrayItemNoNewLine, Universal.WhiteSpace.CommaSpacing.TooMuchSpaceAfter
 			$cid = $this->capture->write_meta(
 				array(
 					'visibility_row' => null,            'run_id'         => $run_id,
@@ -170,7 +181,7 @@ class PRV_Probe_Run_Executor {
 			$this->ledger->update_row_cost( $row_id, $result->get_cost_usd() );
 		}
 
-		// phpcs:disable WordPress.Arrays.ArrayDeclarationSpacing.ArrayItemNoNewLine
+		// phpcs:disable WordPress.Arrays.ArrayDeclarationSpacing.ArrayItemNoNewLine, Universal.WhiteSpace.CommaSpacing.TooMuchSpaceAfter
 		$cid = $this->capture->write_meta(
 			array(
 				'visibility_row' => $row_id > 0 ? $row_id : null, 'run_id'    => $run_id,
@@ -286,5 +297,4 @@ class PRV_Probe_Run_Executor {
 		}
 		update_option( 'prv_api_key_last_check', current_time( 'mysql', true ) );
 	}
-
 }
