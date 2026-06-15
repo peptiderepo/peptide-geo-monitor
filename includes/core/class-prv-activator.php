@@ -19,6 +19,7 @@ declare(strict_types=1);
  *
  * @see class-prv-table-manager.php — Database schema creation.
  * @see class-prv-cron.php          — Cron scheduling.
+ * @see class-prv-prune-cron.php    — Daily prune cron (v0.3.0).
  * @package PrVision
  */
 class PRV_Activator {
@@ -32,7 +33,12 @@ class PRV_Activator {
 	 */
 	public static function activate(): void {
 		PRV_Table_Manager::create_table();
+		// v0.3.0: per-call audit trail tables.
+		PRV_Call_Meta_Table::create_table();
+		PRV_Call_Io_Table::create_table();
 		PRV_Config::seed_defaults();
 		PRV_Cron::schedule_weekly();
+		// v0.3.0: daily prune cron for prv_call_io.
+		PRV_Prune_Cron::schedule();
 	}
 }

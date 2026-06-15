@@ -1,6 +1,6 @@
 # Conventions — PR Vision
 
-**Version:** 0.2.1 | **Last updated:** 2026-06-14
+**Version:** 0.3.0 | **Last updated:** 2026-06-15
 
 Applies to all contributors and AI agents working in this repo. Where this document and `AGENT-OPERATING-STANDARD.md` conflict on process, the Standard wins; this document wins on code style.
 
@@ -92,3 +92,12 @@ All key reads must go through `PRV_Key_Store::get_key()`. This maintains the pre
 - AJAX handlers: call `PRV_Key_Store::get_key()` before any LLM call.
 - New provider that needs the key: implement `is_configured()` as `'' !== PRV_Key_Store::get_key()`.
 - Do NOT pass the resolved key to any client-side surface, log, exception message, or `error_log()`.
+
+## 9. Capture pattern (v0.3.0+)
+
+The call-audit trail follows a strict allowlist pattern:
+
+- `PRV_Capture_Writer::write_meta()` accepts only: `visibility_row`, `run_id`, `peptide_slug`, `model`, `intent_label`, `tokens_in`, `tokens_out`, `cost_usd`, `latency_ms`, `cited`, `http_status`, `config_version`.
+- `PRV_Capture_Writer::write_io()` accepts only: the rendered `prompt_text` (plain text) and `response_text` (LLM response content).
+- **NEVER** pass `$headers`, `$parsed_args`, `Authorization`, raw HTTP request blobs, or any field not in the above lists.
+- Capture calls are LAST in the probe loop and wrapped in a swallowing try/catch — failure must never propagate to the probe path or corrupt cap accounting.

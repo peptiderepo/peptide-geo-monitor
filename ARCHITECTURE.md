@@ -1,6 +1,6 @@
 # Architecture — PR Vision
 
-**Version:** 0.2.1 | **Last updated:** 2026-06-14
+**Version:** 0.3.0 | **Last updated:** 2026-06-15
 
 ---
 
@@ -10,6 +10,7 @@
 
 **v1 scope:** AI-visibility only. The collector/panel seam is present so future data categories can be added as new classes.
 **v2 additions:** Model manager CRUD (no deploy needed), config-version tracking, run-lock, projected cost, API-key three-state, dark "Assay" Settings UI.
+**v0.3.0 additions:** Per-call cost/metadata + I/O audit trail; Costs + Call Log admin pages; non-modal detail drawer; daily I/O prune cron; `PRV_Gateway_Client` exception body removed (P0).
 
 ---
 
@@ -129,6 +130,42 @@ Admin page load ─────────────────────�
 ---
 
 ## 4. Database
+
+### v0.3.0 additions
+
+**Table:** `{prefix}prv_call_meta` (kept indefinitely)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | BIGINT UNSIGNED PK | Auto-increment |
+| visibility_row | BIGINT UNSIGNED NULL | FK to prv_ai_visibility.id (nullable) |
+| run_id | VARCHAR(36) | UUID for the run |
+| peptide_slug | VARCHAR(200) | e.g. "bpc-157" |
+| model | VARCHAR(200) | e.g. "perplexity/sonar" |
+| intent_label | VARCHAR(200) | Prompt intent template |
+| tokens_in | INT NULL | Input token count from API |
+| tokens_out | INT NULL | Output token count from API |
+| cost_usd | DECIMAL(12,8) | Actual call cost |
+| latency_ms | INT NULL | Call latency in ms |
+| cited | TINYINT(1) NULL | 1=cited, 0=not cited, NULL=error |
+| http_status | INT | HTTP status (200=ok, 4xx/5xx=error) |
+| captured_at | DATETIME | UTC |
+| config_version | INT NULL | Config version at run time |
+| io_captured | TINYINT(1) | 1 when write_io() succeeded; 0 for error rows and legacy/pre-feature rows; drives drawer state (0=Legacy, 1+io present=Normal, 1+io absent=Pruned) |
+
+**Table:** `{prefix}prv_call_io` (pruned after retention window)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | BIGINT UNSIGNED PK | Auto-increment |
+| call_id | BIGINT UNSIGNED | FK to prv_call_meta.id |
+| prompt_text | LONGTEXT | Rendered prompt (plain text) |
+| response_text | LONGTEXT | Raw LLM response text |
+| captured_at | DATETIME | UTC (indexed for prune query) |
+
+---
+
+## 4a. Original Database
 
 **Table:** `{prefix}prv_ai_visibility`
 

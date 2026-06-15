@@ -34,6 +34,13 @@ declare(strict_types=1);
 class PRV_Gateway_Client {
 
 	/**
+	 * HTTP status code from the most recent request (set on permanent error).
+	 *
+	 * @var int
+	 */
+	private int $last_http_status = 200;
+
+	/**
 	 * Base URL for the Cloudflare AI Gateway (without trailing slash).
 	 */
 	private const GATEWAY_BASE = 'https://gateway.ai.cloudflare.com/v1';
@@ -59,6 +66,9 @@ class PRV_Gateway_Client {
 	 * @return array<string, mixed> Decoded JSON response body.
 	 *
 	 * @throws \RuntimeException On permanent HTTP failure or parse error.
+	 *                              Exception message carries HTTP status code only;
+	 *                              the response body is never included (P0: prevents
+	 *                              secret-key leakage via 401 error responses).
 	 */
 	public function post_to_gateway( string $provider_slug, array $body, string $api_key, string $endpoint = '/chat/completions' ): array {
 		$base_url  = $this->build_base_url( $provider_slug );
@@ -110,8 +120,9 @@ class PRV_Gateway_Client {
 				}
 
 				if ( $status >= 400 ) {
-					// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, not HTML output
-					throw new \RuntimeException( sprintf( 'PR Vision gateway HTTP %d: %s', $status, substr( $raw_body, 0, 300 ) ) );
+					$this->last_http_status = $status;
+					// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, not HTML output; body intentionally omitted (P0: prevents key-leak via 401 body)
+					throw new \RuntimeException( sprintf( 'PR Vision gateway HTTP %d', $status ) );
 				}
 
 				$data = json_decode( $raw_body, true );
@@ -127,6 +138,18 @@ class PRV_Gateway_Client {
 
 		// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- exception message, not HTML output
 		throw new \RuntimeException( sprintf( 'PR Vision: gateway failed after %d attempts. Last: %s', PRV_MAX_RETRIES, $last_error ) );
+	}
+
+	/**
+	 * Get the HTTP status code from the last failed request.
+	 *
+	 * Allows callers to record the HTTP status code in error records without
+	 * parsing the exception message. Returns 200 when no failure has occurred.
+	 *
+	 * @return int HTTP status code.
+	 */
+	public function get_last_http_status(): int {
+		return $this->last_http_status;
 	}
 
 	/**

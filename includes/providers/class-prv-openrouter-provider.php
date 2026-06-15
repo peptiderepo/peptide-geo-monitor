@@ -164,7 +164,11 @@ class PRV_OpenRouter_Provider implements PRV_Probe_Provider {
 			$cost_usd = (float) $data['usage']['total_tokens'] * 0.000002;
 		}
 
-		return new PRV_Probe_Result( $raw_excerpt, $domains, $cited, $our_position, $cost_usd );
+		// Token counts for per-call attribution.
+		$tokens_in  = isset( $data['usage']['prompt_tokens'] ) ? (int) $data['usage']['prompt_tokens'] : null;
+		$tokens_out = isset( $data['usage']['completion_tokens'] ) ? (int) $data['usage']['completion_tokens'] : null;
+
+		return new PRV_Probe_Result( $raw_excerpt, $domains, $cited, $our_position, $cost_usd, $tokens_in, $tokens_out );
 	}
 
 	/**

@@ -38,6 +38,7 @@ class PRV_Settings_Renderer {
 		$this->render_styles();
 		echo '<div class="prv-settings-wrap">';
 		echo '<h1 class="prv-page-title">' . esc_html__( 'PR Vision — Settings', 'pr-vision' ) . '</h1>';
+		( new PRV_Costs_Renderer() )->render_subnav( 'settings' );
 		$this->render_notices();
 		echo '<div class="prv-card"><h2>' . esc_html__( 'Model Manager', 'pr-vision' ) . '</h2>';
 		( new PRV_Model_Manager_Table() )->render();
@@ -202,6 +203,11 @@ class PRV_Settings_Renderer {
 		$budget = PRV_Config::get_monthly_budget_usd();
 		echo '<div class="prv-field"><label class="prv-label" for="prv_monthly_budget_usd">' . esc_html__( 'Monthly budget cap (USD)', 'pr-vision' ) . '</label>';
 		echo '<input class="prv-input" style="max-width:160px;" type="number" min="0.01" step="0.01" id="prv_monthly_budget_usd" name="prv_monthly_budget_usd" value="' . esc_attr( number_format( $budget, 2, '.', '' ) ) . '" data-scoring-relevant="1"></div>';
+		// v0.3.0: I/O retention days.
+		$retention = PRV_Config::get_io_retention_days();
+		echo '<div class="prv-field"><label class="prv-label" for="prv_io_retention_days">' . esc_html__( 'Call I/O retention (days)', 'pr-vision' ) . '</label>';
+		echo '<input class="prv-input" style="max-width:120px;" type="number" min="1" step="1" id="prv_io_retention_days" name="prv_io_retention_days" value="' . esc_attr( (string) $retention ) . '">';
+		echo '<span class="prv-field-hint">' . esc_html__( 'Prompt + response text is auto-deleted after this many days. Cost and metadata are kept indefinitely.', 'pr-vision' ) . '</span></div>';
 	}
 
 	/**

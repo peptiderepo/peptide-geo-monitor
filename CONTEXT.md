@@ -1,6 +1,6 @@
 # Context — Domain Glossary (PR Vision)
 
-**Version:** 0.2.1 | **Last updated:** 2026-06-14
+**Version:** 0.3.0 | **Last updated:** 2026-06-15
 
 This file is the ubiquitous-language glossary for `pr-vision`. Every term below has a precise meaning within this codebase. AI agents and human contributors should use this terminology consistently.
 
@@ -141,3 +141,28 @@ The Settings page section that allows the operator to set/replace/clear the API 
 The symmetric key used to encrypt/decrypt `prv_provider_key_enc`. Derived via SHA-256 from `AUTH_KEY + SECURE_AUTH_KEY` (or `wp_salt()` fallback) — environment-specific and never stored. Derived fresh at every encrypt/decrypt call.
 
 **Code identifiers:** `PRV_Key_Store::derive_encryption_key()`, `PRV_Crypto_Helper::encrypt()`, `PRV_Crypto_Helper::decrypt()`.
+
+### Call Meta / Call Log
+The per-call audit trail introduced in v0.3.0. Every LLM probe call produces a **call metadata** row (`prv_call_meta`) kept indefinitely, and a **call I/O** row (`prv_call_io`) retained for a configurable window.
+
+**Code identifiers:** `PRV_Call_Meta_Table`, `PRV_Call_Io_Table`, `PRV_Capture_Writer`, `PRV_Call_Log_Query`.
+
+### Capture Writer
+The `PRV_Capture_Writer` class that writes call metadata + I/O rows after a probe. Implements a strict allowlist: stores rendered prompt text, response text, model, tokens, cost — NEVER headers, Authorization, or any raw HTTP request object.
+
+**Code identifiers:** `PRV_Capture_Writer::write_meta()`, `PRV_Capture_Writer::write_io()`.
+
+### Retention Window
+The configurable number of days raw prompt + response text is kept in `prv_call_io` before the daily prune cron deletes it. Default 90 days. Cost/metadata in `prv_call_meta` is kept indefinitely.
+
+**Code identifiers:** `PRV_Config::get_io_retention_days()`, `prv_io_retention_days` option, `PRV_Prune_Cron::prune_now()`.
+
+### Detail Drawer
+A non-modal, keyboard-accessible panel (`role="complementary"`) on the Call Log page that shows the exact rendered prompt + raw response for any selected call. Five states: Normal, Pruned, Legacy/not-captured, Failed, Loading. Focus-managed: opens to close button, Esc closes and returns focus to the triggering row, no tab-trap.
+
+**Code identifiers:** `PRV_Call_Drawer_Renderer`, `PRV_Call_Drawer_Script`, `PRV_Call_Detail_Ajax`.
+
+### Capture Ordering (P0)
+The mandatory sequence within each probe iteration: `can_afford → probe → persist_result → update_row_cost → write_meta → capture_io`. `capture_io` is always last and wrapped in a swallowing try/catch so a write failure can never reach the probe path or corrupt cap accounting.
+
+**Code identifiers:** `PRV_Probe_Run_Executor::probe_one()`.

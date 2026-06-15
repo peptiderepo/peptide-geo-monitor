@@ -137,6 +137,20 @@ class PRV_Config {
 		);
 	}
 
+
+	/**
+	 * Get the I/O retention window in days.
+	 *
+	 * Raw prompt + response text in prv_call_io is pruned after this many days.
+	 * Cost/metadata in prv_call_meta is kept indefinitely.
+	 *
+	 * @return int Days; minimum 1, default PRV_IO_RETENTION_DEFAULT_DAYS.
+	 */
+	public static function get_io_retention_days(): int {
+		$val = (int) get_option( 'prv_io_retention_days', PRV_IO_RETENTION_DEFAULT_DAYS );
+		return max( 1, $val );
+	}
+
 	/**
 	 * Default set of ~12 high-interest peptides (slug + human-readable label).
 	 *
