@@ -27,41 +27,49 @@ if ( ! defined( 'ARRAY_N' ) ) {
 	define( 'ARRAY_N', 'ARRAY_N' );
 }
 
-define( 'PRV_VERSION', '0.2.3' );
+define( 'PRV_VERSION', '0.3.0' );
 define( 'PRV_PLUGIN_FILE', __DIR__ . '/../pr-vision.php' );
 define( 'PRV_PLUGIN_DIR', realpath( __DIR__ . '/..' ) . '/' );
 define( 'PRV_PLUGIN_URL', 'http://example.test/wp-content/plugins/pr-vision/' );
-define( 'PRV_SCHEMA_VERSION', 2 );
+define( 'PRV_SCHEMA_VERSION', 3 );
 define( 'PRV_MAX_RETRIES', 3 );
 define( 'PRV_API_TIMEOUT_SECONDS', 60 );
 define( 'PRV_RETRY_BASE_DELAY_SECONDS', 2 );
 define( 'PRV_DEFAULT_MONTHLY_BUDGET_USD', 5.0 );
 define( 'PRV_CRON_HOOK', 'prv_weekly_probe' );
 define( 'PRV_TARGET_DOMAIN', 'peptiderepo.com' );
+define( 'PRV_IO_RETENTION_DEFAULT_DAYS', 90 );
+define( 'PRV_DAILY_PRUNE_HOOK', 'prv_daily_prune' );
 
 /* ── Global test state ─────────────────────────────────────────────────── */
 
 $GLOBALS['prv_test_state'] = [
-	'options'        => [],
-	'transients'     => [],
-	'actions'        => [],
-	'wpdb_insert_id' => 1,
-	'wpdb_results'   => [],
-	'wpdb_var'       => null,
-	'cron_events'    => [],
-	'remote_posts'   => [],
+	'options'              => [],
+	'transients'           => [],
+	'actions'              => [],
+	'wpdb_insert_id'       => 1,
+	'wpdb_results'         => [],
+	'wpdb_var'             => null,
+	'cron_events'          => [],
+	'remote_posts'         => [],
+	'wpdb_call_meta_rows'  => [],
+	'wpdb_call_io_rows'    => [],
+	'wpdb_dropped_tables'  => [],
 ];
 
 function prv_test_reset(): void {
 	$GLOBALS['prv_test_state'] = [
-		'options'        => [],
-		'transients'     => [],
-		'actions'        => [],
-		'wpdb_insert_id' => 1,
-		'wpdb_results'   => [],
-		'wpdb_var'       => null,
-		'cron_events'    => [],
-		'remote_posts'   => [],
+		'options'              => [],
+		'transients'           => [],
+		'actions'              => [],
+		'wpdb_insert_id'       => 1,
+		'wpdb_results'         => [],
+		'wpdb_var'             => null,
+		'cron_events'          => [],
+		'remote_posts'         => [],
+		'wpdb_call_meta_rows'  => [],
+		'wpdb_call_io_rows'    => [],
+		'wpdb_dropped_tables'  => [],
 	];
 	PRV_Collector_Registry::reset_for_testing();
 }
@@ -182,6 +190,7 @@ function wp_create_nonce( string $action ): string { return 'test_nonce'; }
 function submit_button( string $text, string $type = 'primary', string $name = 'submit', bool $wrap = true ): void {}
 function add_query_arg( array $args, string $url ): string { return $url . '?' . http_build_query( $args ); }
 function admin_url( string $path ): string { return 'http://example.test/wp-admin/' . ltrim( $path, '/' ); }
+function plugin_dir_path( string $file ): string { return dirname( $file ) . '/'; }
 function wp_safe_redirect( string $url ): void {}
 function wp_send_json_success( $data = null ): void { throw new \RuntimeException( 'json_success:' . json_encode( $data ) ); }
 function wp_send_json_error( $data = null ): void { throw new \RuntimeException( 'json_error:' . json_encode( $data ) ); }
@@ -230,9 +239,21 @@ class stdClass_wpdb {
 	public function prepare( string $query, ...$args ): string {
 		return vsprintf( str_replace( '%s', "'%s'", $query ), array_map( 'addslashes', $args ) );
 	}
-	public function query( string $sql ): bool { return true; }
+	public function query( string $sql ): bool {
+		if ( preg_match( '/DROP TABLE.*?(prv_\w+)/i', $sql, $m ) ) {
+			$GLOBALS['prv_test_state']['wpdb_dropped_tables'][] = $m[1];
+		}
+		return true;
+	}
 	public function insert( string $table, array $data, array $format = [] ): int {
 		$this->insert_id = $GLOBALS['prv_test_state']['wpdb_insert_id']++;
+		// Track call_meta and call_io rows for test assertions.
+		if ( str_contains( $table, 'prv_call_meta' ) ) {
+			$GLOBALS['prv_test_state']['wpdb_call_meta_rows'][] = $data;
+		}
+		if ( str_contains( $table, 'prv_call_io' ) ) {
+			$GLOBALS['prv_test_state']['wpdb_call_io_rows'][] = $data;
+		}
 		return 1;
 	}
 	public function update( string $table, array $data, array $where, array $df = [], array $wf = [] ): int { return 1; }

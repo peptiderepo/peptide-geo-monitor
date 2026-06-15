@@ -3,7 +3,7 @@
  * Plugin Name: PR Vision
  * Plugin URI:  https://peptiderepo.com
  * Description: Weekly server-side LLM probes for AI-visibility (GEO) tracking. Records whether peptiderepo.com is cited by LLMs across core peptides, stores time-series, and renders an admin dashboard + settings UI.
- * Version:     0.2.3
+ * Version:     0.3.0
  * Author:      peptiderepo
  * Author URI:  https://peptiderepo.com
  * License:     GPL-2.0-or-later
@@ -24,11 +24,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /* ── Constants ────────────────────────────────────────────────────────── */
 
-define( 'PRV_VERSION', '0.2.3' );
+define( 'PRV_VERSION', '0.3.0' );
 define( 'PRV_PLUGIN_FILE', __FILE__ );
 define( 'PRV_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PRV_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'PRV_SCHEMA_VERSION', 2 );
+define( 'PRV_SCHEMA_VERSION', 3 );
 
 /** Maximum HTTP retries for LLM API calls. @var int */
 define( 'PRV_MAX_RETRIES', 3 );
@@ -47,6 +47,12 @@ define( 'PRV_CRON_HOOK', 'prv_weekly_probe' );
 
 /** The site we are tracking citations for. @var string */
 define( 'PRV_TARGET_DOMAIN', 'peptiderepo.com' );
+/** Default I/O retention window in days. @var int */
+define( 'PRV_IO_RETENTION_DEFAULT_DAYS', 90 );
+
+/** WP-Cron hook name for the daily prune run. @var string */
+define( 'PRV_DAILY_PRUNE_HOOK', 'prv_daily_prune' );
+
 
 /* ── Autoloader ───────────────────────────────────────────────────────── */
 

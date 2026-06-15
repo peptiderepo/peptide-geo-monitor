@@ -12,6 +12,10 @@
  * prv_last_run_truncated_at -- all purged by the prv_ wildcard DELETE below.
  *
  * v0.2.3 addition: prv_provider_key_enc (encrypted API key) -- also purged
+ *
+ * v0.3.0 additions: prv_call_meta + prv_call_io tables (both DROPped);
+ *   prv_io_retention_days option (purged by wildcard DELETE);
+ *   prv_daily_prune cron hook (cleared in step 4).
  * by the prv_ wildcard DELETE below. No plaintext is stored.
  *
  * @see ARCHITECTURE.md          -- Section Uninstall specification.
@@ -26,11 +30,25 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 
 global $wpdb;
 
-/* ── 1. Drop the custom table ─────────────────────────────────────── */
+/* ── 0. Bootstrap minimum classes for DROP calls ─────────────────── */
+
+require_once plugin_dir_path( __FILE__ ) . 'includes/core/class-prv-autoloader.php';
+PRV_Autoloader::register();
+
+/* ── 1. Drop the custom tables (including v0.3.0 audit tables) ────── */
 
 $table = $wpdb->prefix . 'prv_ai_visibility';
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.NoCaching
 $wpdb->query( "DROP TABLE IF EXISTS {$table}" );
+
+// v0.3.0: per-call audit tables (drop io before meta to respect FK intent).
+$io_table = $wpdb->prefix . 'prv_call_io';
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.NoCaching
+$wpdb->query( "DROP TABLE IF EXISTS {$io_table}" );
+
+$meta_table = $wpdb->prefix . 'prv_call_meta';
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.NoCaching
+$wpdb->query( "DROP TABLE IF EXISTS {$meta_table}" );
 
 /* ── 2. Delete all prv_ prefixed options (v0.1, v0.2, v0.2.3) ───── */
 
@@ -50,3 +68,5 @@ $wpdb->query(
 /* ── 4. Clear any remaining scheduled cron events ─────────────────── */
 
 wp_clear_scheduled_hook( 'prv_weekly_probe' );
+// v0.3.0: daily prune cron.
+wp_clear_scheduled_hook( 'prv_daily_prune' );

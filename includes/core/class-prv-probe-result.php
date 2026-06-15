@@ -13,6 +13,8 @@ declare(strict_types=1);
  * Returned by every PRV_Probe_Provider implementation. Immutable — all
  * fields are set in the constructor and read via typed getters.
  *
+ * v0.3.0 adds tokens_in/tokens_out for per-call cost attribution.
+ *
  * Who triggers: PRV_Perplexity_Provider and PRV_OpenRouter_Provider.
  * Dependencies: None.
  *
@@ -31,13 +33,17 @@ class PRV_Probe_Result {
 	 * @param bool     $cited          Whether peptiderepo.com appears in source_domains.
 	 * @param int|null $our_position   1-based position of peptiderepo.com in sources, or null.
 	 * @param float    $cost_usd       Estimated call cost in USD.
+	 * @param int|null $tokens_in      Input token count from the API response (null if unknown).
+	 * @param int|null $tokens_out     Output token count from the API response (null if unknown).
 	 */
 	public function __construct(
 		private readonly string $raw_excerpt,
 		private readonly array $source_domains,
 		private readonly bool $cited,
 		private readonly ?int $our_position,
-		private readonly float $cost_usd
+		private readonly float $cost_usd,
+		private readonly ?int $tokens_in = null,
+		private readonly ?int $tokens_out = null
 	) {}
 
 	/**
@@ -83,5 +89,23 @@ class PRV_Probe_Result {
 	 */
 	public function get_cost_usd(): float {
 		return $this->cost_usd;
+	}
+
+	/**
+	 * Get the input token count for this call (null if not reported by provider).
+	 *
+	 * @return int|null
+	 */
+	public function get_tokens_in(): ?int {
+		return $this->tokens_in;
+	}
+
+	/**
+	 * Get the output token count for this call (null if not reported by provider).
+	 *
+	 * @return int|null
+	 */
+	public function get_tokens_out(): ?int {
+		return $this->tokens_out;
 	}
 }

@@ -76,6 +76,11 @@ class PRV_Settings_Controller {
 			? max( 0.01, (float) sanitize_text_field( wp_unslash( (string) $_POST['prv_monthly_budget_usd'] ) ) )
 			: PRV_DEFAULT_MONTHLY_BUDGET_USD;
 		update_option( 'prv_monthly_budget_usd', $budget );
+		// v0.3.0: I/O retention days.
+		$retention_days = isset( $_POST['prv_io_retention_days'] )
+			? max( 1, absint( sanitize_text_field( wp_unslash( (string) $_POST['prv_io_retention_days'] ) ) ) )
+			: PRV_IO_RETENTION_DEFAULT_DAYS;
+		update_option( 'prv_io_retention_days', $retention_days );
 
 		$cadence_raw = isset( $_POST['prv_cadence'] )
 			? sanitize_text_field( wp_unslash( (string) $_POST['prv_cadence'] ) )

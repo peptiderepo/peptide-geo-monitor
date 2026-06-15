@@ -17,6 +17,7 @@ declare(strict_types=1);
  * Dependencies: PRV_Cron.
  *
  * @see class-prv-cron.php      — Cron registration + clearing.
+ * @see class-prv-prune-cron.php — Daily prune cron clear (v0.3.0).
  * @see uninstall.php           — Full data purge on uninstall.
  * @package PrVision
  */
@@ -31,5 +32,7 @@ class PRV_Deactivator {
 	 */
 	public static function deactivate(): void {
 		PRV_Cron::clear_schedule();
+		// v0.3.0: clear the daily prune event.
+		PRV_Prune_Cron::clear_schedule();
 	}
 }

@@ -7,6 +7,65 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [0.3.0] — 2026-06-15
+
+Per-call cost accountability + LLM call audit trail. Every probe call now
+produces an inspectable record with cost, tokens, latency, and the exact
+rendered prompt + raw response. Two new admin pages (Costs, Call Log) with
+a non-modal detail drawer. Raw I/O is pruned on a configurable retention
+window (default 90 days); cost/metadata kept indefinitely.
+
+### Security (P0)
+- `PRV_Gateway_Client::post_to_gateway()` — removed response body from
+  RuntimeException message; exception now carries HTTP status code only.
+  Closes the pre-existing 401-body → error_log → key-leak vector.
+- `PRV_Capture_Writer` — allowlist-only capture; NEVER receives `$headers`,
+  `Authorization`, or any raw HTTP request object. Structurally impossible
+  for a key to enter a stored row.
+- Mandatory capture ordering enforced in `PRV_Probe_Run_Executor`:
+  `can_afford → probe → persist_result → update_row_cost → write_meta → capture_io`.
+  `capture_io` is last and wrapped in a swallowing try/catch.
+
+### Added
+- **`PRV_Call_Meta_Table`** — per-call cost/metadata table (kept indefinitely).
+- **`PRV_Call_Io_Table`** — per-call I/O table (pruned on retention window).
+- **`PRV_Capture_Writer`** — writes metadata + I/O rows; allowlist-only.
+- **`PRV_Prune_Cron`** — daily `prv_daily_prune` cron deletes aged `prv_call_io` rows only.
+- **`PRV_Cost_Rollup_Query`** — MTD summary, model breakdown, drill-down, projection.
+- **`PRV_Call_Log_Query`** — paginated call-log with filters; per-call I/O fetch.
+- **`PRV_Costs_Page`** — "PR Vision > Costs" admin sub-page.
+- **`PRV_Costs_Renderer`** — cap progress, bento, model table, drill-down; includes `render_subnav()` shared helper.
+- **`PRV_Call_Log_Page`** — "PR Vision > Call Log" admin sub-page with filter bar.
+- **`PRV_Call_Log_Table_Renderer`** — paginated table; cited% 0 = muted, >0 = lime; WCAG AA pagination.
+- **`PRV_Call_Drawer_Renderer`** — non-modal `role="complementary"` drawer; 5 states (Normal, Pruned, Legacy, Failed, Loading). Focus-managed; Esc closes.
+- **`PRV_Call_Drawer_Script`** — inline JS for drawer open/close/fetch/copy split for 300-line compliance.
+- **`PRV_Call_Detail_Ajax`** — `wp_ajax_prv_call_detail` AJAX handler for drawer content.
+- **`PRV_Admin_Page_Css`** — CSS provider split from `PRV_Admin_Page` for 300-line compliance.
+- **`PRV_Probe_Run_Executor`** — inner probe loop split from `PRV_Probe_Runner`.
+- `PRV_Probe_Result` — added `tokens_in`/`tokens_out` params + getters.
+- Both providers — report `tokens_in`/`tokens_out` from `usage.prompt_tokens`/`completion_tokens`.
+- `PRV_Config::get_io_retention_days()` — reads `prv_io_retention_days` option.
+- Retention days field added to Settings form + saved by controller.
+- Subnav 4-tab strip added to all PR Vision pages (Dashboard | Costs | Call Log | Settings).
+- Constants `PRV_IO_RETENTION_DEFAULT_DAYS`, `PRV_DAILY_PRUNE_HOOK`.
+- Tests: `test-capture-writer.php`, `test-cost-audit.php`.
+
+### Changed
+- `PRV_Probe_Runner` — slimmed to lock + UUID + delegation; inner loop moved to `PRV_Probe_Run_Executor`. Constructor now also accepts `PRV_Capture_Writer`.
+- `PRV_Upgrader::run()` — creates both new tables on every `plugins_loaded`.
+- `PRV_Activator::activate()` — creates new tables + schedules `prv_daily_prune` cron.
+- `PRV_Deactivator::deactivate()` — clears `prv_daily_prune` cron.
+- `PRV_Plugin::init()` — registers `PRV_Costs_Page`, `PRV_Call_Log_Page`, `PRV_Call_Detail_Ajax`, `PRV_Prune_Cron`.
+- `PRV_Settings_Renderer` — adds subnav + retention days field.
+- `PRV_Settings_Controller::handle_save()` — saves `prv_io_retention_days`.
+- `uninstall.php` — DROPs `prv_call_io` + `prv_call_meta`; clears `prv_daily_prune` cron.
+- Schema version bumped to 3.
+
+### Security
+- See P0 section above.
+
+---
+
 ## [0.2.3] — 2026-06-15
 
 UI-editable provider API key: encrypted at rest, write-only, wp-config precedence.

@@ -20,6 +20,8 @@ declare(strict_types=1);
  *
  * @see class-prv-model-registry.php    -- Migration v2 implementation.
  * @see class-prv-config-version.php    -- Scoring-config versioning.
+ * @see class-prv-call-meta-table.php   -- [v0.3.0] Per-call metadata table.
+ * @see class-prv-call-io-table.php     -- [v0.3.0] Per-call I/O table (prunable).
  * @see class-prv-plugin.php            -- Calls PRV_Upgrader::run().
  * @package PrVision
  */
@@ -34,7 +36,12 @@ class PRV_Upgrader {
 	 */
 	public static function run(): void {
 		PRV_Table_Manager::create_table();
+		// v0.3.0: per-call cost/metadata + I/O tables.
+		PRV_Call_Meta_Table::create_table();
+		PRV_Call_Io_Table::create_table();
 		PRV_Model_Registry::run_migration_v2();
 		PRV_Config_Version::maybe_seed_initial_version();
+		// v0.3.0: seed retention default if not set.
+		add_option( 'prv_io_retention_days', PRV_IO_RETENTION_DEFAULT_DAYS );
 	}
 }
