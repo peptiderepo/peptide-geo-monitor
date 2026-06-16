@@ -7,6 +7,39 @@ Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [0.3.2] — 2026-06-16
+
+CI/CD adoption: PHPUnit test suite (WP stubs), estate reusable pipeline,
+and governance workflows.
+
+### Added
+- **PHPUnit test suite** (`tests: stubs`): 17 hand-rolled test files converted
+  to 17 `tests/unit/*Test.php` PHPUnit TestCases. All security assertions
+  preserved (P0 key-leak / encryption / capture-allowlist tests in
+  `CaptureWriterTest`, `KeyStoreTest`). `composer test` runs
+  `vendor/bin/phpunit`.
+- **phpunit.xml.dist** — PHPUnit 9.x configuration; discovers `tests/unit/*Test.php`.
+- **`tests/bootstrap.php`** updated to load Composer autoloader before stubs
+  (PHPUnit stubs pattern; no WP install required).
+- **`composer.json`** — added `phpunit/phpunit ^9.6` and
+  `yoast/phpunit-polyfills ^2.0` to `require-dev`; added `composer test`
+  script.
+- **`.github/workflows/ci.yml`** — thin caller of
+  `peptiderepo/peptide-e2e/.github/workflows/ci.yml@main` (`tests: stubs`,
+  `has_js: true`, `workflow_call` trigger, `permissions: contents: write`).
+  Replaces the hand-rolled inline CI.
+- **`.github/workflows/deploy.yml`** — estate pattern: thin caller of
+  `peptiderepo/peptide-e2e/.github/workflows/deploy-app.yml@main` with
+  `target_path: wp-content/plugins/pr-vision`, gated on the reusable CI job.
+  Replaces the standalone inline rsync. Pull-deploy on Hostinger stays as
+  break-glass.
+- **`.github/workflows/cto-review.yml`** — Haiku-only automated PR reviewer
+  (estate standard, A/B panel dropped 2026-06-12).
+- **`.github/workflows/main-push-audit.yml`** — direct-push-to-main audit
+  tripwire (estate standard).
+
+---
+
 ## [0.3.1] — 2026-06-15
 
 Self-healing cron scheduling: `PRV_Cron_Guard` ensures managed WP-Cron events

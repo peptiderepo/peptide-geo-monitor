@@ -1,14 +1,19 @@
 <?php
 /**
- * Minimal test bootstrap -- stubs all WordPress functions used by the plugin
- * so classes can be exercised in plain PHP without a WP install.
+ * PHPUnit bootstrap for PR Vision tests.
  *
- * Pattern mirrors peptide-repo-core's bootstrap (flat PHP, no PHPUnit).
+ * Loads WP stubs in plain PHP (no WP install required) and registers
+ * the plugin autoloader so all classes are available to PHPUnit test cases.
+ *
+ * Pattern: WP stubs (tests: stubs) — no DB, no service, fast.
  *
  * @package PrVision
  */
 
 declare(strict_types=1);
+
+// Composer autoloader must come first so PHPUnit classes are available.
+require_once dirname( __DIR__ ) . '/vendor/autoload.php';
 
 /* ── Constants ────────────────────────────────────────────────────────── */
 
@@ -27,7 +32,7 @@ if ( ! defined( 'ARRAY_N' ) ) {
 	define( 'ARRAY_N', 'ARRAY_N' );
 }
 
-define( 'PRV_VERSION', '0.3.1' );
+define( 'PRV_VERSION', '0.3.2' );
 define( 'PRV_PLUGIN_FILE', __DIR__ . '/../pr-vision.php' );
 define( 'PRV_PLUGIN_DIR', realpath( __DIR__ . '/..' ) . '/' );
 define( 'PRV_PLUGIN_URL', 'http://example.test/wp-content/plugins/pr-vision/' );
@@ -269,47 +274,6 @@ class stdClass_wpdb {
 $wpdb = new stdClass_wpdb();
 
 function dbDelta( string $sql ): array { return []; }
-
-/* ── Test assertion helpers ────────────────────────────────────────────── */
-
-$GLOBALS['prv_test_report'] = [ 'pass' => 0, 'fail' => 0, 'failures' => [] ];
-
-function prv_assert( bool $condition, string $label ): void {
-	if ( $condition ) {
-		$GLOBALS['prv_test_report']['pass']++;
-		echo "  PASS: {$label}\n";
-	} else {
-		$GLOBALS['prv_test_report']['fail']++;
-		$GLOBALS['prv_test_report']['failures'][] = $label;
-		echo "  FAIL: {$label}\n";
-	}
-}
-
-function prv_assert_equals( $expected, $actual, string $label ): void {
-	$pass = ( $expected === $actual );
-	prv_assert( $pass, $label . ( $pass ? '' : ' -- expected ' . var_export( $expected, true ) . ', got ' . var_export( $actual, true ) ) );
-}
-
-function prv_assert_throws( callable $fn, string $exception_class, string $label ): void {
-	try {
-		$fn();
-		prv_assert( false, $label . ' -- expected ' . $exception_class . ' but no exception thrown' );
-	} catch ( \Throwable $e ) {
-		prv_assert( $e instanceof $exception_class, $label . ' -- got ' . get_class( $e ) );
-	}
-}
-
-function prv_test_summary(): int {
-	$r = $GLOBALS['prv_test_report'];
-	echo "\n---\n";
-	echo "Totals: {$r['pass']} passed, {$r['fail']} failed\n";
-	if ( $r['fail'] > 0 ) {
-		echo "Failures:\n";
-		foreach ( $r['failures'] as $f ) { echo "  - {$f}\n"; }
-		return 1;
-	}
-	return 0;
-}
 
 /* ── Load autoloader + all plugin classes ──────────────────────────────── */
 
